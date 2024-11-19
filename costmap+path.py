@@ -1,11 +1,24 @@
+#
+#
+#
+#
+#
+# LIBRARIES ============================================
 import cv2
 import numpy as np
 from heapq import heappush, heappop
 
+# GLOBAL VARIABLES ============================================
 # Load the image
-image_path = r"C:\Users\neilc\OneDrive\Bureau\Exercises_mobile\grid.png"
+image_path = r"./grid.png"
 original_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
+
+# START OF LOIC FUNCTIONS ============================================
+
+
+
+# START OF NEIL FUNCTIONS ============================================
 # Function to discretize image into a costmap
 def create_costmap(image, grid_size):
     height, width = image.shape
@@ -75,6 +88,7 @@ def select_points(event, x, y, flags, param):
         cv2.imshow("Select Start and Goal", temp_image)
 
 
+# DEF OF MAIN ============================================================
 def main():
     try:
         grid_size = int(input("Enter the grid size (N): "))
@@ -132,6 +146,9 @@ def main():
     else:
         print("No path found!")
 
+# LAUNCH OF MAIN ============================================================
 main()
+
+
 
 # run -> write the discretization of the N*N grid (10 will discretize the image in a grid of size 10*10) -> click on 2 points of the image then any key (usually q) and the path should appear. press q to close the window.
