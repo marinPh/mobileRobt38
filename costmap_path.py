@@ -89,7 +89,9 @@ def select_points(event, x, y, flags, param):
 
 
 # DEF OF MAIN ============================================================
-def main():
+
+
+def init(original_image):
     try:
         grid_size = int(input("Enter the grid size (N): "))
     except ValueError:
@@ -114,6 +116,11 @@ def main():
              points[0][1] * grid_size // original_image.shape[1])
     goal = (points[1][0] * grid_size // original_image.shape[0], 
             points[1][1] * grid_size // original_image.shape[1])
+    
+    
+    return costmap, block_size, start, goal, display_image
+
+def update(costmap, block_size, start, goal, display_image):
 
     # Calculate shortest path using A*
     path = astar(costmap, start, goal)
@@ -139,12 +146,7 @@ def main():
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-        # Print the centers as a numpy array
-        path_centers_np = np.array(path_centers)
-        print("Path centers (coordinates):")
-        print(path_centers_np)
-    else:
-        print("No path found!")
+    return path,costmap
 
 # LAUNCH OF MAIN ============================================================
 main()
