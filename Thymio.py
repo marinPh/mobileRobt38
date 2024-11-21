@@ -203,10 +203,24 @@ class Thymio:
     def set_var(self, var, value):
         aw(self.node.set_variables({var: [int(value)]}))
 
+
+
     def getProxH(self):
         self.wait_for_variables(["prox.horizontal"])
         aw(self.client.sleep(0.1))
         return list(self.node.v.prox.horizontal)
+    
+    def getSpeedR(self):
+        self.wait_for_variables(["motor.right.speed"])
+        aw(self.client.sleep(0.1))
+        return list(self.node.v.motor.right.speed)
+    
+    def getSpeedL(self):
+        self.wait_for_variables(["motor.left.speed"])
+        aw(self.client.sleep(0.1))
+        return list(self.node.v.motor.left.speed)
+    
+    def getWheelR(self):
 
     def getWheelR(self):
         self.wait_for_variables(["motor.right.speed"])
