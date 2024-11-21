@@ -151,17 +151,17 @@ class Thymio:
     async def getProxH(self):
         self.wait_for_variables(["prox.horizontal"])
         aw(self.client.sleep(0.1))
-        return self.node.v.prox.horizontal
+        return list(self.node.v.prox.horizontal)
     
     async def getWheelR(self):
         self.wait_for_variables(["motor.right.speed"])
         aw(self.client.sleep(0.1))
-        return self.node.v.motor.right.speed
+        return list(self.node.v.motor.right.speed)
     
     async def getWheelL(self):
         self.wait_for_variables(["motor.left.speed"])
         aw(self.client.sleep(0.1))
-        return self.node.v.motor.left.speed
+        return list(self.node.v.motor.left.speed)
     
     def get_vertices_waypoint(self,xb,yb):
         vertices = np.array([[xb+self.l,yb+self.l],
