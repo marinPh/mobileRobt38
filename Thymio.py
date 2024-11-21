@@ -8,10 +8,14 @@ from heapq import heappush, heappop
 
 
 class Thymio:
-    async def __init__(self,l=5,coneMargin=0.1):
-        self.client = ClientAsync()
+    
+    async def iniateLock (self):
         self.node = await self.client.wait_for_node()
         await self.node.lock()
+        return None
+    def __init__(self,l=5,coneMargin=0.1):
+        self.client = ClientAsync()
+        self.node = None
         self.ratio =  5/(4003-1455)
         self.coneMargin = coneMargin
         # orderThymio = real_speed/speedConversion
