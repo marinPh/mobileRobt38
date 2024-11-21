@@ -199,20 +199,30 @@ class Thymio:
     async def sleep(self, duration):
         await self.client.sleep(duration)
 
-    async def set_var(self, var, value):
-        await self.node.set_var(var, value)
-
-    async def getProxH(self):
+    def set_var(self, var, value):
+        aw(self.node.set_var(var, value)
+)
+    def getProxH(self):
         self.wait_for_variables(["prox.horizontal"])
         aw(self.client.sleep(0.1))
         return list(self.node.v.prox.horizontal)
     
-    async def getWheelR(self):
+    def getSpeedR(self):
         self.wait_for_variables(["motor.right.speed"])
         aw(self.client.sleep(0.1))
         return list(self.node.v.motor.right.speed)
     
-    async def getWheelL(self):
+    def getSpeedL(self):
+        self.wait_for_variables(["motor.left.speed"])
+        aw(self.client.sleep(0.1))
+        return list(self.node.v.motor.left.speed)
+    
+    def getWheelR(self):
+        self.wait_for_variables(["motor.right.speed"])
+        aw(self.client.sleep(0.1))
+        return list(self.node.v.motor.right.speed)
+    
+    def getWheelL(self):
         self.wait_for_variables(["motor.left.speed"])
         aw(self.client.sleep(0.1))
         return self.node.v.motor.left.speed
