@@ -113,14 +113,15 @@ def init(original_image):
 
     # Map points to grid
     start = (points[0][0] * grid_size // original_image.shape[0], 
-             points[0][1] * grid_size // original_image.shape[1])
+             points[0][1] * grid_size // original_image.shape[1]) 
     goal = (points[1][0] * grid_size // original_image.shape[0], 
             points[1][1] * grid_size // original_image.shape[1])
     
     
     return costmap, block_size, start, goal, display_image
 
-def update(costmap, block_size, start, goal, display_image):
+def update(costmap, block_size, start, goal, display_image,obstacles): #start=tuple of 3, (x, y, theta)
+    #obstacles: list of tuples, distance and angle ob obstacle from thymio. angle of detection: +-135
 
     # Calculate shortest path using A*
     path = astar(costmap, start, goal)
