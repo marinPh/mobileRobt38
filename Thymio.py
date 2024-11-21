@@ -20,7 +20,7 @@ class Thymio:
         self.ratio = 5 / (4003 - 1455)
         self.coneMargin = coneMargin
         # orderThymio = real_speed/speedConversion
-        self.speedConversion = 0.1
+        self.speedConversion = 0.43478260869565216
         self.sensorAngles = {
             "left_front": -30,
             "front middle-left": -15,
@@ -39,7 +39,7 @@ class Thymio:
         self.K_translation = 1 / self.Ts
 
         self.W = np.identity(6)
-        self.V_c = np.identity(4)
+        self.V_c = np.identity(5)
         self.V_nc = np.identity(2)
         self.A = np.array(
             [
@@ -118,6 +118,7 @@ class Thymio:
         y_measured=0,
         theta_measured=0,
     ):
+        print(type(V_left_measure))
         s_nc = np.array(
             [
                 (V_left_measure + V_right_measure) / 2,
@@ -199,20 +200,30 @@ class Thymio:
     async def sleep(self, duration):
         await self.client.sleep(duration)
 
-    async def set_var(self, var, value):
-        await self.node.set_var(var, value)
+    def set_var(self, var, value):
+        aw(self.node.set_variables({var: [int(value)]}))
 
-    async def getProxH(self):
+    def getProxH(self):
         self.wait_for_variables(["prox.horizontal"])
         aw(self.client.sleep(0.1))
         return list(self.node.v.prox.horizontal)
-    
-    async def getWheelR(self):
+
+    def getSpeedR(self):
         self.wait_for_variables(["motor.right.speed"])
         aw(self.client.sleep(0.1))
-        return list(self.node.v.motor.right.speed)
-    
-    async def getWheelL(self):
+        return self.node.v.motor.right.speed * self.speedConversion
+
+    def getSpeedL(self):
+        self.wait_for_variables(["motor.left.speed"])
+        aw(self.client.sleep(0.1))
+        return self.node.v.motor.left.speed * self.speedConversion
+
+    def getWheelR(self):
+        self.wait_for_variables(["motor.right.speed"])
+        aw(self.client.sleep(0.1))
+        return self.node.v.motor.right.speed
+
+    def getWheelL(self):
         self.wait_for_variables(["motor.left.speed"])
         aw(self.client.sleep(0.1))
         return self.node.v.motor.left.speed
@@ -227,12 +238,16 @@ class Thymio:
             ]
         )
         return list(self.node.v.motor.left.speed)
-    
-    def get_vertices_waypoint(self,xb,yb):
-        vertices = np.array([[xb+self.l,yb+self.l],
-                             [xb-self.l,yb+self.l],
-                             [xb-self.l,yb-self.l],
-                             [xb+self.l,yb-self.l]])
+
+    def get_vertices_waypoint(self, xb, yb):
+        vertices = np.array(
+            [
+                [xb + self.l, yb + self.l],
+                [xb - self.l, yb + self.l],
+                [xb - self.l, yb - self.l],
+                [xb + self.l, yb - self.l],
+            ]
+        )
         return vertices
 
     def get_cone_angles_waypoint(self, pos_estimate, xb, yb):
@@ -288,13 +303,13 @@ class Thymio:
     def navigate(self, current_pos, next_pos):
         pos_estimate = current_pos
         xb, yb = next_pos
-        theta_max, theta_min = self.get_cone_angles_waypoint(pos_estimate[:1], xb, yb)
+        theta_max, theta_min = self.get_cone_angles_waypoint(pos_estimate[:2], xb, yb)
 
         if self.robot_align_waypoint(current_pos[-1], theta_max, theta_min):
             left, right = self.translation_control(pos_estimate, xb, yb)
         else:
             left, right = self.rotation_control(current_pos[-1], xb, yb)
-        right, left = right * self.speedConversion, left * self.speedConversion
+        right, left = right / self.speedConversion, left / self.speedConversion
 
         self.set_var("motor.left.target", left)
         self.set_var("motor.right.target", right)
