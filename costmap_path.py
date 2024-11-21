@@ -150,7 +150,6 @@ def update(costmap, block_size, start, goal, display_image,obstacles): #start=tu
     return path,costmap
 
 # LAUNCH OF MAIN ============================================================
-main()
 
 
 

@@ -8,11 +8,14 @@ from heapq import heappush, heappop
 
 
 class Thymio:
-    async def __init__(self):
+    async def __init__(self,l=5,coneMargin=0.1):
         self.client = ClientAsync()
         self.node = await self.client.wait_for_node()
         await self.node.lock()
         self.ratio =  5/(4003-1455)
+        self.coneMargin = coneMargin
+        # orderThymio = real_speed/speedConversion
+        self.speedConversion = 0.1
         self.sensorAngles = {
     'left_front': -30,
     'front middle-left': -15,
@@ -22,6 +25,8 @@ class Thymio:
     'left_back': -135,
     'right_back': 135,
 }
+        
+        self.l = l
         
         self.L = 1 
         self.Ts = 0.05
@@ -153,3 +158,98 @@ class Thymio:
         self.wait_for_variables(["motor.left.speed"])
         aw(self.client.sleep(0.1))
         return self.node.v.motor.left.speed
+    
+    def get_vertices_waypoint(self,xb,yb):
+        vertices = np.array([[xb+self.l,yb+self.l],
+                             [xb-self.l,yb+self.l],
+                             [xb-self.l,yb-self.l],
+                             [xb+self.l,yb-self.l]])
+        return vertices
+    
+    def get_cone_angles_waypoint(self,pos_estimate,xb,yb):
+        """_summary_
+        This function compute the range within which the robot should point before moving to the waypoint
+        with a margin
+        Args:
+            pos_estimate (1D np array with 2 variables): x,y position of the robot in mm
+            xb (float): x position of the waypoint
+            yb (float): y position of the waypoint
+            margin (float) : number between 0 and 1. (1-2*margin) corresponds to the coverage of the angle
+            theta_max - theta_min
+        """
+        vertices = self.get_vertices_waypoint(xb,yb)
+        angles = []
+        for vertex in vertices:
+            delta = vertex - pos_estimate
+            angles.append(np.arctan2(delta[1],delta[0]))
+        angles = np.array(angles)
+        theta_max = np.max(angles)
+        theta_min = np.min(angles)
+        delta = theta_max - theta_min
+        return theta_max - self.coneMargin*delta, theta_min + self.coneMargin*delta
+
+    def robot_align_waypoint(theta_estimate, theta_max, theta_min):
+        if theta_estimate < theta_max and theta_estimate > theta_min:
+            return True
+        else:
+            return False
+        
+    def translation_control(self,pos_estimate, xb, yb):
+        x_estimate = pos_estimate[0] # mm
+        y_estimate = pos_estimate[1] # mm
+        theta_estimate = pos_estimate[2] # rad
+
+        x1_b = np.cos(theta_estimate)*xb + np.sin(theta_estimate)*yb # mm
+        x1_estimate = np.cos(theta_estimate)*x_estimate + np.sin(theta_estimate)*y_estimate # mm
+
+        u = self.K_translation*(x1_b - x1_estimate)
+        left_motor_target = u # en mm/s
+        right_motor_target = u # en mm/s
+        return left_motor_target, right_motor_target
+    
+    def rotation_control(self,theta_estimate, xb, yb):
+        theta_b = np.arctan2(yb,xb) # en rad
+        u = self.K_rotation*(theta_b - theta_estimate)
+        left_motor_target = u # en mm/s
+        right_motor_target = -u # en mm/s
+        return left_motor_target, right_motor_target
+    
+    def navigate(self,current_pos,next_pos):
+        pos_estimate = current_pos
+        xb,yb = next_pos
+        theta_max, theta_min = self.get_cone_angles_waypoint(pos_estimate[:1],xb,yb)
+        
+        if self.robot_align_waypoint(current_pos[-1],theta_max,theta_min):
+            left,right =self.translation_control(pos_estimate[-1], xb, yb)
+        else:
+            left,right = self.rotation_control(current_pos[-1], xb, yb)      
+        right,left = right * self.speedConversion, left * self.speedConversion
+        
+        self.set_var("motor.left.target", left)
+        self.set_var("motor.right.target", right)
+        
+    def robot_close_waypoint(self,pos_estimate, xb, yb):
+        """_summary_
+        Return a boolean to say if the robot is in a square with (xb,yb) as center and 2*l as length size
+        Args:
+            pos_estimate (1D np array with 2 variables): x,y position of the robot in mm
+            xb (float): x position of the waypoint
+            yb (float): y position of the waypoint
+        """
+        ones = np.array([1,
+                    1,
+                    1,
+                    1])
+        F = np.array([[1, 0],
+                  [-1,0],
+                  [0, 1],
+                  [0,-1]])
+        pos_waypoint = np.array([xb,yb])
+
+        if all(F@(pos_estimate - pos_waypoint) <= self.l*ones):
+            return True
+        else:
+            return False
+        
+        
+        
