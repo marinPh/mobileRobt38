@@ -1,9 +1,3 @@
-#
-#
-#
-#
-#
-# LIBRARIES ============================================
 import cv2
 import numpy as np
 from heapq import heappush, heappop
@@ -13,36 +7,49 @@ from heapq import heappush, heappop
 image_path = r"./grid.png"
 original_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
+# Mouse callback to get points
+points = []
 
-# START OF LOIC FUNCTIONS ============================================
+def select_points(event, x, y, flags, param):
+    """
+    Mouse callback function to capture clicks for selecting start and goal points.
+    """
+    global points
+    if event == cv2.EVENT_LBUTTONDOWN:
+        print(f"Mouse clicked at: ({x}, {y})")  # Debug print
+        points.append((y, x))  # Append (row, col) in grid terms
+        # Display the click on the image
+        temp_image = param.copy()
+        cv2.circle(
+            temp_image, (x, y), 5, (0, 0, 255), -1
+        )  # Draw a red dot for the click
+        cv2.imshow("Select Start and Goal", temp_image)
+        # Close the window after two points are clicked
+        if len(points) == 2:
+            cv2.destroyWindow("Select Start and Goal")
 
 
-# START OF NEIL FUNCTIONS ============================================
-# Function to discretize image into a costmap
-def create_costmap(image, grid_size):
+def create_costmap(image, grid_rows, grid_cols):
     height, width = image.shape
-    block_size = height // grid_size
-    costmap = np.zeros((grid_size, grid_size), dtype=np.int8)
+    block_height = height // grid_rows
+    block_width = width // grid_cols
+    costmap = np.zeros((grid_rows, grid_cols), dtype=np.int8)
 
-    for i in range(grid_size):
-        for j in range(grid_size):
-            block = image[
-                i * block_size : (i + 1) * block_size,
-                j * block_size : (j + 1) * block_size,
-            ]
+    for i in range(grid_rows):
+        for j in range(grid_cols):
+            block = image[i * block_height : (i + 1) * block_height,
+                          j * block_width : (j + 1) * block_width]
             if np.mean(block) > 127:  # Assume white is walkable (mean > 127)
                 costmap[i, j] = 0  # Walkable
             else:
                 costmap[i, j] = 1  # Obstacle
-    return costmap, block_size
+    return costmap, block_height, block_width
 
 
-# Heuristic function for A*
 def heuristic(a, b):
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
-# A* algorithm for shortest path
 def astar(costmap, start, goal):
     rows, cols = costmap.shape
     open_set = []
@@ -53,7 +60,7 @@ def astar(costmap, start, goal):
 
     def neighbors(node):
         x, y = node
-        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:#, (1, 1), (1,-1),(-1, 1), (-1, -1)
             nx, ny = x + dx, y + dy
             if 0 <= nx < rows and 0 <= ny < cols and costmap[nx, ny] == 0:
                 yield (nx, ny)
@@ -81,33 +88,15 @@ def astar(costmap, start, goal):
     return []  # No path found
 
 
-# Mouse callback to get points
-points = []
-
-
-def select_points(event, x, y, flags, param):
-    if event == cv2.EVENT_LBUTTONDOWN:
-        print(f"Mouse clicked at: ({x}, {y})")  # Debug print
-        points.append((y, x))  # Append (row, col) in grid terms
-        # Display the click on the image
-        temp_image = param.copy()
-        cv2.circle(
-            temp_image, (x, y), 5, (0, 0, 255), -1
-        )  # Draw a red dot for the click
-        cv2.imshow("Select Start and Goal", temp_image)
-
-
-# DEF OF MAIN ============================================================
-
-
 def init(original_image):
     try:
-        grid_size = int(input("Enter the grid size (N): "))
+        height_division = int(input("Enter the number of rows (N): "))
+        width_division = int(input("Enter the number of columns (M): "))
     except ValueError:
-        print("Invalid input! Please enter an integer.")
+        print("Invalid input! Please enter integers.")
         return
 
-    costmap, block_size = create_costmap(original_image, grid_size)
+    costmap, block_height, block_width = create_costmap(original_image, height_division, width_division)
 
     # Show the original image for user to click points
     display_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2BGR)
@@ -122,22 +111,21 @@ def init(original_image):
 
     # Map points to grid
     start = (
-        points[0][0] * grid_size // original_image.shape[0],
-        points[0][1] * grid_size // original_image.shape[1],
+        points[0][0] * height_division // original_image.shape[0],
+        points[0][1] * width_division // original_image.shape[1],
     )
     goal = (
-        points[1][0] * grid_size // original_image.shape[0],
-        points[1][1] * grid_size // original_image.shape[1],
+        points[1][0] * height_division // original_image.shape[0],
+        points[1][1] * width_division // original_image.shape[1],
     )
 
-    return costmap, block_size, start, goal, display_image
+    return costmap, block_height, block_width, start, goal, display_image
 
 
-def update(
-    costmap, block_size, start, goal, display_image, obstacles
-):  # start=tuple of 3, (x, y, theta)
-    # obstacles: list of tuples, distance and angle ob obstacle from thymio. angle of detection: +-135
-
+def update(costmap, block_height, block_width, start, goal, display_image, obstacles):
+    """
+    Update the costmap with obstacles and compute the shortest path.
+    """
     # Calculate shortest path using A*
     path = astar(costmap, start, goal)
 
@@ -148,8 +136,8 @@ def update(
 
         for row, col in path:
             # Calculate the center of the square
-            center_x = int((col + 0.5) * block_size)
-            center_y = int((row + 0.5) * block_size)
+            center_x = int((col + 0.5) * block_width)
+            center_y = int((row + 0.5) * block_height)
             path_centers.append((center_x, center_y))
             # Draw the center point
             cv2.circle(overlay_image, (center_x, center_y), 5, (0, 255, 0), -1)
@@ -162,10 +150,22 @@ def update(
 
         cv2.imshow("Shortest Path", overlay_image)
 
+        # Wait for 'q' to close the path-drawn window
+        while True:
+            key = cv2.waitKey(1)
+            if key == ord("q"):
+                cv2.destroyWindow("Shortest Path")
+                break
+
     return path, costmap
 
 
-# LAUNCH OF MAIN ============================================================
+def main():
+    result = init(original_image)
+    if result:
+        costmap, block_height, block_width, start, goal, display_image = result
+        update(costmap, block_height, block_width, start, goal, display_image, obstacles=[])
 
 
-# run -> write the discretization of the N*N grid (10 will discretize the image in a grid of size 10*10) -> click on 2 points of the image then any key (usually q) and the path should appear. press q to close the window.
+if __name__ == "__main__":
+    main()
