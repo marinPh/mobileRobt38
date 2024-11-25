@@ -9,12 +9,12 @@ from heapq import heappush, heappop
 
 class Thymio:
 
-    async def iniateLock(self):
+    async def initiateLock(self):
         self.node = await self.client.wait_for_node()
         await self.node.lock()
         return None
 
-    def __init__(self, l=5, coneMargin=0.1):
+    def __init__(self, l=50, coneMargin=0.1):
         self.client = ClientAsync()
         self.node = None
         self.ratio = 5 / (4003 - 1455)
@@ -33,14 +33,14 @@ class Thymio:
 
         self.l = l
 
-        self.L = 1
-        self.Ts = 0.05
-        self.K_rotation = self.L / self.Ts
-        self.K_translation = 1 / self.Ts
+        self.L = 46.75  # mm - demi-distance entre les 2 roues
+        self.Ts = 1.12
+        self.K_rotation = self.L / (self.Ts)
+        self.K_translation = 1 / (self.Ts)
 
-        self.W = np.identity(6)
-        self.V_c = np.identity(5)
-        self.V_nc = np.identity(2)
+        self.W = np.diag([0.001, 0.001, 0.00001, 0.001, 0.001, 0.00001])
+        self.V_c = np.diag([0.1, 0.1, 0.00001, 0.1, 0.00001])
+        self.V_nc = np.diag([0.001, 0.00001])
         self.A = np.array(
             [
                 [1, 0, 0, self.Ts, 0, 0],
@@ -118,7 +118,6 @@ class Thymio:
         y_measured=0,
         theta_measured=0,
     ):
-        print(type(V_left_measure))
         s_nc = np.array(
             [
                 (V_left_measure + V_right_measure) / 2,
@@ -325,6 +324,9 @@ class Thymio:
         ones = np.array([1, 1, 1, 1])
         F = np.array([[1, 0], [-1, 0], [0, 1], [0, -1]])
         pos_waypoint = np.array([xb, yb])
+
+        print("Is the goal reached ?")
+        print(all(F @ (pos_estimate - pos_waypoint) <= self.l * ones))
 
         if all(F @ (pos_estimate - pos_waypoint) <= self.l * ones):
             return True
