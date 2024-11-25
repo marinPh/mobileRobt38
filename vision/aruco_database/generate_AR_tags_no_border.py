@@ -16,7 +16,7 @@ import os
 aruco_dict = aruco.Dictionary_get(aruco.DICT_5X5_100) 
 
 # Define the output folder to save marker images
-output_folder = "aruco_markers"
+output_folder = "aruco_markers_no_border"
 os.makedirs(output_folder, exist_ok=True)
 
 # Define marker size in pixels
