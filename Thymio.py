@@ -149,7 +149,7 @@ class Thymio:
                 pos.append((-1, 0))
             else:
                 detected = True
-                pos.append((distance*100, angle))
+                pos.append((distance * 100, angle))
         return pos, detected
 
     def filtering_step(
@@ -194,13 +194,13 @@ class Thymio:
     def wait_for_variables(self, variables):
         aw(self.node.wait_for_variables(variables))
         aw(self.client.sleep(0.1))
-        
-    def set_multiple_variables(self, variables:dict):
+
+    def set_multiple_variables(self, variables: dict):
         print(variables)
         aw(self.node.set_variables(variables))
         aw(self.client.sleep(0.1))
-        
-    def get_multiple_variables(self, variables:list) -> dict:
+
+    def get_multiple_variables(self, variables: list) -> dict:
         self.wait_for_variables(variables)
         return {variable: self.node.v[variable] for variable in variables}
 
@@ -210,7 +210,7 @@ class Thymio:
     def getProxH(self):
         self.wait_for_variables(["prox.horizontal"])
         return list(self.node.v.prox.horizontal)
-    
+
     def getSpeedR(self):
         self.wait_for_variables(["motor.right.speed"])
         return self.node.v.motor.right.speed * self.speedConversion
@@ -289,7 +289,9 @@ class Thymio:
         else:
             left, right = self.rotation_control(current_pos[-1], xb, yb)
         right, left = right / self.speedConversion, left / self.speedConversion
-        self.set_multiple_variables({"motor.left.target": [int(left)/self.speedConversion], "motor.right.target": [int(right)/self.speedConversion]})
+        self.set_multiple_variables(
+            {"motor.left.target": [int(left)], "motor.right.target": [int(right)]}
+        )
 
     def robot_close_waypoint(self, pos_estimate, xb, yb):
         """_summary_
