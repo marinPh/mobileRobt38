@@ -92,7 +92,7 @@ def astar(costmap, start, goal):
     return []  # No path found
 
 
-def update(costmap, block_height, block_width, start, goal, frame, obstacles, cm_per_pixel):
+def update(costmap, block_height, block_width, start, goal, frame,cm_per_pixel, obstacles):
     """
     Update the costmap with obstacles and compute the shortest path.
     """
@@ -190,15 +190,14 @@ def main():
         points[1][1] * width_division // frame_gray.shape[1],
     )
 
-    # Loop for live video processing
-    obstacles = [(30, 45), (50, -30), (70, 90)]  # Example obstacles
+ 
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        update(costmap, block_height, block_width, start, goal, frame, obstacles, cm_per_pixel)
+        update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles=[])
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):
