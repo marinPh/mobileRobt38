@@ -134,8 +134,8 @@ class Thymio:
         for each sensor, and appends the position to a list. If the distance is greater
         than 5, it appends (-1, 0) to indicate no obstacle detected within the threshold.
         Returns:
-            list of tuples: A list of tuples where each tuple contains the distance (float)
-                            and angle (float) of the detected obstacle.
+            list of tuples: A list of tuples where each tuple contains the distance (float) in mm
+                            and angle (float) in rad of the detected obstacle 0 is in front of thymio.
         """
         pos = []
         detected = False
@@ -149,7 +149,7 @@ class Thymio:
                 pos.append((-1, 0))
             else:
                 detected = True
-                pos.append((distance, angle))
+                pos.append((distance*100, angle))
         return pos, detected
 
     def filtering_step(
@@ -193,6 +193,16 @@ class Thymio:
 
     def wait_for_variables(self, variables):
         aw(self.node.wait_for_variables(variables))
+        
+    def set_multiple_variables(self, variables:dict):
+        aw(self.node.set_variables(variables))
+        
+        
+    def get_multiple_variables(self, variables:dict) -> dict:
+        
+        self.wait_for_variables(list(variables.keys()))
+        aw(self.client.sleep(0.1))
+        return {key: self.node.v[key] for key in variables.keys()}
 
     async def sleep(self, duration):
         await self.client.sleep(duration)
@@ -224,17 +234,6 @@ class Thymio:
         self.wait_for_variables(["motor.left.speed"])
         aw(self.client.sleep(0.1))
         return self.node.v.motor.left.speed
-
-    def get_vertices_waypoint(self, xb, yb):
-        vertices = np.array(
-            [
-                [xb + self.l, yb + self.l],
-                [xb - self.l, yb + self.l],
-                [xb - self.l, yb - self.l],
-                [xb + self.l, yb - self.l],
-            ]
-        )
-        return list(self.node.v.motor.left.speed)
 
     def get_vertices_waypoint(self, xb, yb):
         vertices = np.array(
