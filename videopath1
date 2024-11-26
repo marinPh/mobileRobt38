@@ -2,11 +2,6 @@ import cv2
 import numpy as np
 from heapq import heappush, heappop
 
-# GLOBAL VARIABLES ============================================
-# Load the image
-image_path = r"./grid.png"
-original_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-
 # Mouse callback to get points
 points = []
 
@@ -97,7 +92,7 @@ def astar(costmap, start, goal):
     return []  # No path found
 
 
-def update(costmap, block_height, block_width, start, goal, display_image, obstacles, cm_per_pixel):
+def update(costmap, block_height, block_width, start, goal, frame,cm_per_pixel, obstacles):
     """
     Update the costmap with obstacles and compute the shortest path.
     """
@@ -124,8 +119,8 @@ def update(costmap, block_height, block_width, start, goal, display_image, obsta
     path = astar(costmap, start, goal)
 
     # Draw path on the image
+    overlay_image = frame.copy()
     if path:
-        overlay_image = display_image.copy()
         path_centers = []
 
         for row, col in path:
@@ -138,23 +133,25 @@ def update(costmap, block_height, block_width, start, goal, display_image, obsta
 
         # Draw lines connecting the centers
         for i in range(len(path_centers) - 1):
-            cv2.line(
-                overlay_image, path_centers[i], path_centers[i + 1], (0, 0, 255), 2
-            )
+            cv2.line(overlay_image, path_centers[i], path_centers[i + 1], (0, 0, 255), 2)
 
-        cv2.imshow("Shortest Path", overlay_image)
-
-        # Wait for 'q' to close the path-drawn window
-        while True:
-            key = cv2.waitKey(1)
-            if key == ord("q"):
-                cv2.destroyWindow("Shortest Path")
-                break
-
-    return path, costmap
+    # Show the updated frame
+    cv2.imshow("Live Path Update", overlay_image)
 
 
-def init(original_image):
+def main():
+    cap = cv2.VideoCapture(0)  # Use 0 for the default camera
+    if not cap.isOpened():
+        print("Error: Could not open video stream.")
+        return
+
+    # Use the first frame for initialization
+    ret, frame = cap.read()
+    if not ret:
+        print("Error: Could not read video frame.")
+        return
+
+    frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     try:
         height_division = int(input("Enter the number of rows (N): "))
         width_division = int(input("Enter the number of columns (M): "))
@@ -162,16 +159,16 @@ def init(original_image):
         print("Invalid input! Please enter integers.")
         return
 
-    costmap, block_height, block_width = create_costmap(original_image, height_division, width_division)
+    costmap, block_height, block_width = create_costmap(frame_gray, height_division, width_division)
 
     # Simplified cm_per_pixel calculation
-    image_height, image_width = original_image.shape
+    image_height, image_width = frame_gray.shape
     cm_per_pixel_height = 40 / image_height  # 40 cm is the real-world height
     cm_per_pixel_width = 80 / image_width   # 80 cm is the real-world width
     cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
 
-    # Show the original image for user to click points
-    display_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2BGR)
+    # Select start and goal points
+    display_image = frame.copy()
     cv2.imshow("Select Start and Goal", display_image)
     cv2.setMouseCallback("Select Start and Goal", select_points, display_image)
     print("Click two points: Start and Goal.")
@@ -179,27 +176,35 @@ def init(original_image):
 
     if len(points) < 2:
         print("Please select two points!")
+        cap.release()
+        cv2.destroyAllWindows()
         return
 
     # Map points to grid
     start = (
-        points[0][0] * height_division // original_image.shape[0],
-        points[0][1] * width_division // original_image.shape[1],
+        points[0][0] * height_division // frame_gray.shape[0],
+        points[0][1] * width_division // frame_gray.shape[1],
     )
     goal = (
-        points[1][0] * height_division // original_image.shape[0],
-        points[1][1] * width_division // original_image.shape[1],
+        points[1][0] * height_division // frame_gray.shape[0],
+        points[1][1] * width_division // frame_gray.shape[1],
     )
 
-    return costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
+ 
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
 
+        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles=[])
 
-def main():
-    result = init(original_image)
-    if result:
-        costmap, block_height, block_width, start, goal, display_image, cm_per_pixel = result
-        obstacles = [(30, 45), (50, -30), (70, 90)]  # Example: (distance in cm, angle in degrees)
-        update(costmap, block_height, block_width, start, goal, display_image, obstacles, cm_per_pixel)
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":

@@ -1,7 +1,5 @@
 from tdmclient import ClientAsync, aw
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.linalg import expm
 import cv2
 import numpy as np
 from heapq import heappush, heappop
@@ -9,12 +7,12 @@ from heapq import heappush, heappop
 
 class Thymio:
 
-    async def iniateLock(self):
+    async def initiateLock(self):
         self.node = await self.client.wait_for_node()
         await self.node.lock()
         return None
 
-    def __init__(self, l=5, coneMargin=0.1):
+    def __init__(self, l=50, coneMargin=0.1):
         self.client = ClientAsync()
         self.node = None
         self.ratio = 5 / (4003 - 1455)
@@ -31,16 +29,16 @@ class Thymio:
             "right_back": 135,
         }
 
-        self.l = l
+        self.l = l  # mm
 
-        self.L = 1
-        self.Ts = 0.05
-        self.K_rotation = self.L / self.Ts
-        self.K_translation = 1 / self.Ts
+        self.L = 46.75  # mm - demi-distance entre les 2 roues
+        self.Ts = 0.38
+        self.K_rotation = self.L / (4 * self.Ts)
+        self.K_translation = 1 / (4 * self.Ts)
 
-        self.W = np.identity(6)
-        self.V_c = np.identity(5)
-        self.V_nc = np.identity(2)
+        self.W = np.diag([0.001, 0.001, 0.00001, 0.001, 0.001, 0.00001])
+        self.V_c = np.diag([0.1, 0.1, 0.00001, 0.1, 0.00001])
+        self.V_nc = np.diag([0.001, 0.00001])
         self.A = np.array(
             [
                 [1, 0, 0, self.Ts, 0, 0],
@@ -118,7 +116,6 @@ class Thymio:
         y_measured=0,
         theta_measured=0,
     ):
-        print(type(V_left_measure))
         s_nc = np.array(
             [
                 (V_left_measure + V_right_measure) / 2,
@@ -137,8 +134,8 @@ class Thymio:
         for each sensor, and appends the position to a list. If the distance is greater
         than 5, it appends (-1, 0) to indicate no obstacle detected within the threshold.
         Returns:
-            list of tuples: A list of tuples where each tuple contains the distance (float)
-                            and angle (float) of the detected obstacle.
+            list of tuples: A list of tuples where each tuple contains the distance (float) in mm
+                            and angle (float) in degrees of the detected obstacle 0 is in front of thymio.
         """
         pos = []
         detected = False
@@ -152,7 +149,7 @@ class Thymio:
                 pos.append((-1, 0))
             else:
                 detected = True
-                pos.append((distance, angle))
+                pos.append((distance*10, angle))
         return pos, detected
 
     def filtering_step(
@@ -196,48 +193,28 @@ class Thymio:
 
     def wait_for_variables(self, variables):
         aw(self.node.wait_for_variables(variables))
+        aw(self.client.sleep(0.1))
+
+    def set_multiple_variables(self, variables: dict):
+        print(variables)
+        aw(self.node.set_variables(variables))
+        aw(self.client.sleep(0.1))
+
+    def get_multiple_variables(self, variables: list) -> dict:
+        self.wait_for_variables(variables)
+        return {variable: self.node.v[variable] for variable in variables}
 
     async def sleep(self, duration):
         await self.client.sleep(duration)
 
-    def set_var(self, var, value):
-        aw(self.node.set_variables({var: [int(value)]}))
-
     def getProxH(self):
-        self.wait_for_variables(["prox.horizontal"])
-        aw(self.client.sleep(0.1))
         return list(self.node.v.prox.horizontal)
 
     def getSpeedR(self):
-        self.wait_for_variables(["motor.right.speed"])
-        aw(self.client.sleep(0.1))
         return self.node.v.motor.right.speed * self.speedConversion
 
     def getSpeedL(self):
-        self.wait_for_variables(["motor.left.speed"])
-        aw(self.client.sleep(0.1))
         return self.node.v.motor.left.speed * self.speedConversion
-
-    def getWheelR(self):
-        self.wait_for_variables(["motor.right.speed"])
-        aw(self.client.sleep(0.1))
-        return self.node.v.motor.right.speed
-
-    def getWheelL(self):
-        self.wait_for_variables(["motor.left.speed"])
-        aw(self.client.sleep(0.1))
-        return self.node.v.motor.left.speed
-
-    def get_vertices_waypoint(self, xb, yb):
-        vertices = np.array(
-            [
-                [xb + self.l, yb + self.l],
-                [xb - self.l, yb + self.l],
-                [xb - self.l, yb - self.l],
-                [xb + self.l, yb - self.l],
-            ]
-        )
-        return list(self.node.v.motor.left.speed)
 
     def get_vertices_waypoint(self, xb, yb):
         vertices = np.array(
@@ -304,15 +281,14 @@ class Thymio:
         pos_estimate = current_pos
         xb, yb = next_pos
         theta_max, theta_min = self.get_cone_angles_waypoint(pos_estimate[:2], xb, yb)
-
         if self.robot_align_waypoint(current_pos[-1], theta_max, theta_min):
             left, right = self.translation_control(pos_estimate, xb, yb)
         else:
             left, right = self.rotation_control(current_pos[-1], xb, yb)
         right, left = right / self.speedConversion, left / self.speedConversion
-
-        self.set_var("motor.left.target", left)
-        self.set_var("motor.right.target", right)
+        self.set_multiple_variables(
+            {"motor.left.target": [int(left)], "motor.right.target": [int(right)]}
+        )
 
     def robot_close_waypoint(self, pos_estimate, xb, yb):
         """_summary_
@@ -325,6 +301,9 @@ class Thymio:
         ones = np.array([1, 1, 1, 1])
         F = np.array([[1, 0], [-1, 0], [0, 1], [0, -1]])
         pos_waypoint = np.array([xb, yb])
+
+        print("Is the goal reached ?")
+        print(all(F @ (pos_estimate - pos_waypoint) <= self.l * ones))
 
         if all(F @ (pos_estimate - pos_waypoint) <= self.l * ones):
             return True
