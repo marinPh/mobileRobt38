@@ -30,6 +30,9 @@ def select_points(event, x, y, flags, param):
 
 
 def create_costmap(image, grid_rows, grid_cols):
+    """
+    Discretize the image into a costmap.
+    """
     height, width = image.shape
     block_height = height // grid_rows
     block_width = width // grid_cols
@@ -47,10 +50,16 @@ def create_costmap(image, grid_rows, grid_cols):
 
 
 def heuristic(a, b):
+    """
+    Heuristic function for A* algorithm (Manhattan distance).
+    """
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
 def astar(costmap, start, goal):
+    """
+    A* algorithm for shortest path.
+    """
     rows, cols = costmap.shape
     open_set = []
     heappush(open_set, (0, 0, start))  # (f_cost, g_cost, position)
@@ -60,7 +69,7 @@ def astar(costmap, start, goal):
 
     def neighbors(node):
         x, y = node
-        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:#, (1, 1), (1,-1),(-1, 1), (-1, -1)
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             nx, ny = x + dx, y + dy
             if 0 <= nx < rows and 0 <= ny < cols and costmap[nx, ny] == 0:
                 yield (nx, ny)
@@ -88,45 +97,30 @@ def astar(costmap, start, goal):
     return []  # No path found
 
 
-def init(original_image):
-    try:
-        height_division = int(input("Enter the number of rows (N): "))
-        width_division = int(input("Enter the number of columns (M): "))
-    except ValueError:
-        print("Invalid input! Please enter integers.")
-        return
-
-    costmap, block_height, block_width = create_costmap(original_image, height_division, width_division)
-
-    # Show the original image for user to click points
-    display_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2BGR)
-    cv2.imshow("Select Start and Goal", display_image)
-    cv2.setMouseCallback("Select Start and Goal", select_points, display_image)
-    print("Click two points: Start and Goal.")
-    cv2.waitKey(0)
-
-    if len(points) < 2:
-        print("Please select two points!")
-        return
-
-    # Map points to grid
-    start = (
-        points[0][0] * height_division // original_image.shape[0],
-        points[0][1] * width_division // original_image.shape[1],
-    )
-    goal = (
-        points[1][0] * height_division // original_image.shape[0],
-        points[1][1] * width_division // original_image.shape[1],
-    )
-
-    return costmap, block_height, block_width, start, goal, display_image
-
-
-def update(costmap, block_height, block_width, start, goal, display_image, obstacles):
+def update(costmap, block_height, block_width, start, goal, display_image, obstacles, cm_per_pixel):
     """
     Update the costmap with obstacles and compute the shortest path.
     """
-    # Calculate shortest path using A*
+    # Convert obstacles from (distance, angle) to grid coordinates
+    robot_y, robot_x = start  # Start is in grid coordinates
+    for distance_cm, angle_deg in obstacles:
+        # Convert distance to pixels
+        distance_pixels = distance_cm / cm_per_pixel
+
+        # Calculate obstacle position in pixels
+        angle_rad = np.radians(angle_deg)
+        obstacle_x_pixels = robot_x * block_width + distance_pixels * np.cos(angle_rad)
+        obstacle_y_pixels = robot_y * block_height + distance_pixels * np.sin(angle_rad)
+
+        # Convert to grid coordinates
+        obstacle_x_grid = int(obstacle_x_pixels // block_width)
+        obstacle_y_grid = int(obstacle_y_pixels // block_height)
+
+        # Mark obstacle on the costmap if within bounds
+        if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
+            costmap[obstacle_y_grid, obstacle_x_grid] = 1  # Mark as obstacle
+
+    # Calculate the shortest path using A*
     path = astar(costmap, start, goal)
 
     # Draw path on the image
@@ -160,11 +154,52 @@ def update(costmap, block_height, block_width, start, goal, display_image, obsta
     return path, costmap
 
 
+def init(original_image):
+    try:
+        height_division = int(input("Enter the number of rows (N): "))
+        width_division = int(input("Enter the number of columns (M): "))
+    except ValueError:
+        print("Invalid input! Please enter integers.")
+        return
+
+    costmap, block_height, block_width = create_costmap(original_image, height_division, width_division)
+
+    # Simplified cm_per_pixel calculation
+    image_height, image_width = original_image.shape
+    cm_per_pixel_height = 40 / image_height  # 40 cm is the real-world height
+    cm_per_pixel_width = 80 / image_width   # 80 cm is the real-world width
+    cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
+
+    # Show the original image for user to click points
+    display_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2BGR)
+    cv2.imshow("Select Start and Goal", display_image)
+    cv2.setMouseCallback("Select Start and Goal", select_points, display_image)
+    print("Click two points: Start and Goal.")
+    cv2.waitKey(0)
+
+    if len(points) < 2:
+        print("Please select two points!")
+        return
+
+    # Map points to grid
+    start = (
+        points[0][0] * height_division // original_image.shape[0],
+        points[0][1] * width_division // original_image.shape[1],
+    )
+    goal = (
+        points[1][0] * height_division // original_image.shape[0],
+        points[1][1] * width_division // original_image.shape[1],
+    )
+
+    return costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
+
+
 def main():
     result = init(original_image)
     if result:
-        costmap, block_height, block_width, start, goal, display_image = result
-        update(costmap, block_height, block_width, start, goal, display_image, obstacles=[])
+        costmap, block_height, block_width, start, goal, display_image, cm_per_pixel = result
+        obstacles = [(30, 45), (50, -30), (70, 90)]  # Example: (distance in cm, angle in degrees)
+        update(costmap, block_height, block_width, start, goal, display_image, obstacles, cm_per_pixel)
 
 
 if __name__ == "__main__":
