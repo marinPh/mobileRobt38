@@ -92,12 +92,16 @@ def astar(costmap, start, goal):
     return []  # No path found
 
 
-def update(costmap, block_height, block_width, start, goal, frame,cm_per_pixel, obstacles):
+def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles): 
+    #start: (x, y, angle1)  obstacles: (distance, angle2)   
+    #angle1 is angle of the thymio, angle2 is the angle of the obstacle to the thymio 
     """
     Update the costmap with obstacles and compute the shortest path.
     """
-    # Convert obstacles from (distance, angle) to grid coordinates
-    robot_y, robot_x = start  # Start is in grid coordinates
+    # Convert start coordinates
+    robot_y = start[0] // block_height
+    robot_x = start[1] // block_width  
+    
     for distance_cm, angle_deg in obstacles:
         # Convert distance to pixels
         distance_pixels = distance_cm / cm_per_pixel
@@ -115,8 +119,11 @@ def update(costmap, block_height, block_width, start, goal, frame,cm_per_pixel, 
         if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
             costmap[obstacle_y_grid, obstacle_x_grid] = 1  # Mark as obstacle
 
+    # Dynamically update the start position based on the robot's position
+    dynamic_start = (robot_y, robot_x)
+
     # Calculate the shortest path using A*
-    path = astar(costmap, start, goal)
+    path = astar(costmap, dynamic_start, goal)
 
     # Draw path on the image
     overlay_image = frame.copy()
