@@ -291,7 +291,7 @@ class Thymio:
         else:
             left, right = self.rotation_control(current_pos[-1], xb, yb)
         right, left = right / self.speedConversion, left / self.speedConversion
-        self.set_multiple_variables({"motor.left.target": [int(left)], "motor.right.target": [int(right)]})
+        self.set_multiple_variables({"motor.left.target": [int(left)/self.speedConversion], "motor.right.target": [int(right)/self.speedConversion]})
 
     def robot_close_waypoint(self, pos_estimate, xb, yb):
         """_summary_
