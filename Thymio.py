@@ -199,16 +199,12 @@ class Thymio:
         
         
     def get_multiple_variables(self, variables:dict) -> dict:
-        
         self.wait_for_variables(list(variables.keys()))
         aw(self.client.sleep(0.1))
         return {key: self.node.v[key] for key in variables.keys()}
 
     async def sleep(self, duration):
         await self.client.sleep(duration)
-
-    def set_var(self, var, value):
-        aw(self.node.set_variables({var: [int(value)]}))
 
     def getProxH(self):
         self.wait_for_variables(["prox.horizontal"])
@@ -224,16 +220,6 @@ class Thymio:
         self.wait_for_variables(["motor.left.speed"])
         aw(self.client.sleep(0.1))
         return self.node.v.motor.left.speed * self.speedConversion
-
-    def getWheelR(self):
-        self.wait_for_variables(["motor.right.speed"])
-        aw(self.client.sleep(0.1))
-        return self.node.v.motor.right.speed
-
-    def getWheelL(self):
-        self.wait_for_variables(["motor.left.speed"])
-        aw(self.client.sleep(0.1))
-        return self.node.v.motor.left.speed
 
     def get_vertices_waypoint(self, xb, yb):
         vertices = np.array(
@@ -300,13 +286,11 @@ class Thymio:
         pos_estimate = current_pos
         xb, yb = next_pos
         theta_max, theta_min = self.get_cone_angles_waypoint(pos_estimate[:2], xb, yb)
-
         if self.robot_align_waypoint(current_pos[-1], theta_max, theta_min):
             left, right = self.translation_control(pos_estimate, xb, yb)
         else:
             left, right = self.rotation_control(current_pos[-1], xb, yb)
         right, left = right / self.speedConversion, left / self.speedConversion
-
         self.set_multiple_variables({"motor.left.target": [int(left)], "motor.right.target": [int(right)]})
 
     def robot_close_waypoint(self, pos_estimate, xb, yb):
