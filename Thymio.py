@@ -18,7 +18,7 @@ class Thymio:
         self.ratio = 5 / (4003 - 1455)
         self.coneMargin = coneMargin
         # orderThymio = real_speed/speedConversion
-        self.speedConversion = 0.43478260869565216
+        self.speedConversion = 0.797829
         self.sensorAngles = {
             "left_front": -30,
             "front middle-left": -15,
@@ -36,9 +36,9 @@ class Thymio:
         self.K_rotation = self.L / (4 * self.Ts)
         self.K_translation = 1 / (4 * self.Ts)
 
-        self.W = np.diag([0.001, 0.001, 0.00001, 0.001, 0.001, 0.00001])
+        self.W = np.diag([0.1, 0.1, 0.01, 0.1, 0.1, 0.01])
         self.V_c = np.diag([0.1, 0.1, 0.00001, 0.1, 0.00001])
-        self.V_nc = np.diag([0.001, 0.00001])
+        self.V_nc = np.diag([100, 75.72 / (self.L**2)])  # Wheels
         self.A = np.array(
             [
                 [1, 0, 0, self.Ts, 0, 0],
