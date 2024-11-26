@@ -32,9 +32,9 @@ class Thymio:
         self.l = l  # mm
 
         self.L = 46.75  # mm - demi-distance entre les 2 roues
-        self.Ts = 1.1
-        self.K_rotation = self.L / (self.Ts)
-        self.K_translation = 1 / (self.Ts)
+        self.Ts = 0.38
+        self.K_rotation = self.L / (4 * self.Ts)
+        self.K_translation = 1 / (4 * self.Ts)
 
         self.W = np.diag([0.001, 0.001, 0.00001, 0.001, 0.001, 0.00001])
         self.V_c = np.diag([0.1, 0.1, 0.00001, 0.1, 0.00001])
@@ -149,7 +149,7 @@ class Thymio:
                 pos.append((-1, 0))
             else:
                 detected = True
-                pos.append((distance*100, angle))
+                pos.append((distance * 100, angle))
         return pos, detected
 
     def filtering_step(
@@ -193,47 +193,28 @@ class Thymio:
 
     def wait_for_variables(self, variables):
         aw(self.node.wait_for_variables(variables))
-        
-    def set_multiple_variables(self, variables:dict):
-        aw(self.node.set_variables(variables))
-        
-        
-    def get_multiple_variables(self, variables:dict) -> dict:
-        
-        self.wait_for_variables(list(variables.keys()))
         aw(self.client.sleep(0.1))
-        return {key: self.node.v[key] for key in variables.keys()}
+
+    def set_multiple_variables(self, variables: dict):
+        print(variables)
+        aw(self.node.set_variables(variables))
+        aw(self.client.sleep(0.1))
+
+    def get_multiple_variables(self, variables: list) -> dict:
+        self.wait_for_variables(variables)
+        return {variable: self.node.v[variable] for variable in variables}
 
     async def sleep(self, duration):
         await self.client.sleep(duration)
 
-    def set_var(self, var, value):
-        aw(self.node.set_variables({var: [int(value)]}))
-
     def getProxH(self):
-        self.wait_for_variables(["prox.horizontal"])
-        aw(self.client.sleep(0.1))
         return list(self.node.v.prox.horizontal)
 
     def getSpeedR(self):
-        self.wait_for_variables(["motor.right.speed"])
-        aw(self.client.sleep(0.1))
         return self.node.v.motor.right.speed * self.speedConversion
 
     def getSpeedL(self):
-        self.wait_for_variables(["motor.left.speed"])
-        aw(self.client.sleep(0.1))
         return self.node.v.motor.left.speed * self.speedConversion
-
-    def getWheelR(self):
-        self.wait_for_variables(["motor.right.speed"])
-        aw(self.client.sleep(0.1))
-        return self.node.v.motor.right.speed
-
-    def getWheelL(self):
-        self.wait_for_variables(["motor.left.speed"])
-        aw(self.client.sleep(0.1))
-        return self.node.v.motor.left.speed
 
     def get_vertices_waypoint(self, xb, yb):
         vertices = np.array(
@@ -300,15 +281,14 @@ class Thymio:
         pos_estimate = current_pos
         xb, yb = next_pos
         theta_max, theta_min = self.get_cone_angles_waypoint(pos_estimate[:2], xb, yb)
-
         if self.robot_align_waypoint(current_pos[-1], theta_max, theta_min):
             left, right = self.translation_control(pos_estimate, xb, yb)
         else:
             left, right = self.rotation_control(current_pos[-1], xb, yb)
         right, left = right / self.speedConversion, left / self.speedConversion
-
-        self.set_var("motor.left.target", left)
-        self.set_var("motor.right.target", right)
+        self.set_multiple_variables(
+            {"motor.left.target": [int(left)], "motor.right.target": [int(right)]}
+        )
 
     def robot_close_waypoint(self, pos_estimate, xb, yb):
         """_summary_
