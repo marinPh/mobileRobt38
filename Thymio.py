@@ -135,7 +135,7 @@ class Thymio:
         than 5, it appends (-1, 0) to indicate no obstacle detected within the threshold.
         Returns:
             list of tuples: A list of tuples where each tuple contains the distance (float) in mm
-                            and angle (float) in rad of the detected obstacle 0 is in front of thymio.
+                            and angle (float) in degrees of the detected obstacle 0 is in front of thymio.
         """
         pos = []
         detected = False
@@ -149,7 +149,7 @@ class Thymio:
                 pos.append((-1, 0))
             else:
                 detected = True
-                pos.append((distance * 100, angle))
+                pos.append((distance*10, angle))
         return pos, detected
 
     def filtering_step(
