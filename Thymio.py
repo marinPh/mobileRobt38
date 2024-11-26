@@ -196,10 +196,9 @@ class Thymio:
         aw(self.client.sleep(0.1))
         
     def set_multiple_variables(self, variables:dict):
+        print(variables)
         aw(self.node.set_variables(variables))
         aw(self.client.sleep(0.1))
-       
-        
         
     def get_multiple_variables(self, variables:list) -> dict:
         self.wait_for_variables(variables)
