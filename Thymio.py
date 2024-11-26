@@ -1,7 +1,5 @@
 from tdmclient import ClientAsync, aw
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.linalg import expm
 import cv2
 import numpy as np
 from heapq import heappush, heappop
@@ -31,10 +29,10 @@ class Thymio:
             "right_back": 135,
         }
 
-        self.l = l
+        self.l = l  # mm
 
         self.L = 46.75  # mm - demi-distance entre les 2 roues
-        self.Ts = 1.12
+        self.Ts = 1.1
         self.K_rotation = self.L / (self.Ts)
         self.K_translation = 1 / (self.Ts)
 
