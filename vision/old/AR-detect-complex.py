@@ -57,9 +57,6 @@ while True:
 	cv2.imshow('AR Tag Detection', frame)
 	cv2.imshow('Grayscale Frame', gray)
 
-	# Break the loop on 'q' key press
-	if cv2.waitKey(1) & 0xFF == ord('q'):
-		break
 	
 	# Print debug information
 	print("Corners detected:", corners)
@@ -71,6 +68,10 @@ while True:
 	cv2.imshow('Rejected Points', frame)
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
+	
+	# Break the loop on 'q' key press
+	if cv2.waitKey(1) & 0xFF == ord('q'):
+		break
 
 # Release the capture and close windows
 cap.release()
