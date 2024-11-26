@@ -149,7 +149,7 @@ class Thymio:
                 pos.append((-1, 0))
             else:
                 detected = True
-                pos.append((distance*100, angle))
+                pos.append((distance*10, angle))
         return pos, detected
 
     def filtering_step(
@@ -208,15 +208,12 @@ class Thymio:
         await self.client.sleep(duration)
 
     def getProxH(self):
-        self.wait_for_variables(["prox.horizontal"])
         return list(self.node.v.prox.horizontal)
     
     def getSpeedR(self):
-        self.wait_for_variables(["motor.right.speed"])
         return self.node.v.motor.right.speed * self.speedConversion
 
     def getSpeedL(self):
-        self.wait_for_variables(["motor.left.speed"])
         return self.node.v.motor.left.speed * self.speedConversion
 
     def get_vertices_waypoint(self, xb, yb):
