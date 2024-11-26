@@ -32,9 +32,9 @@ class Thymio:
         self.l = l  # mm
 
         self.L = 46.75  # mm - demi-distance entre les 2 roues
-        self.Ts = 1.1
-        self.K_rotation = self.L / (self.Ts)
-        self.K_translation = 1 / (self.Ts)
+        self.Ts = 0.38
+        self.K_rotation = self.L / (4 * self.Ts)
+        self.K_translation = 1 / (4 * self.Ts)
 
         self.W = np.diag([0.001, 0.001, 0.00001, 0.001, 0.001, 0.00001])
         self.V_c = np.diag([0.1, 0.1, 0.00001, 0.1, 0.00001])
@@ -208,15 +208,12 @@ class Thymio:
         await self.client.sleep(duration)
 
     def getProxH(self):
-        self.wait_for_variables(["prox.horizontal"])
         return list(self.node.v.prox.horizontal)
 
     def getSpeedR(self):
-        self.wait_for_variables(["motor.right.speed"])
         return self.node.v.motor.right.speed * self.speedConversion
 
     def getSpeedL(self):
-        self.wait_for_variables(["motor.left.speed"])
         return self.node.v.motor.left.speed * self.speedConversion
 
     def get_vertices_waypoint(self, xb, yb):
