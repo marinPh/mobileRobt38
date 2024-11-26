@@ -32,9 +32,9 @@ class Thymio:
         self.l = l  # mm
 
         self.L = 46.75  # mm - demi-distance entre les 2 roues
-        self.Ts = 1.1
-        self.K_rotation = self.L / (self.Ts)
-        self.K_translation = 1 / (self.Ts)
+        self.Ts = 0.38
+        self.K_rotation = self.L / (4 * self.Ts)
+        self.K_translation = 1 / (4 * self.Ts)
 
         self.W = np.diag([0.001, 0.001, 0.00001, 0.001, 0.001, 0.00001])
         self.V_c = np.diag([0.1, 0.1, 0.00001, 0.1, 0.00001])
@@ -194,13 +194,13 @@ class Thymio:
     def wait_for_variables(self, variables):
         aw(self.node.wait_for_variables(variables))
         aw(self.client.sleep(0.1))
-        
-    def set_multiple_variables(self, variables:dict):
+
+    def set_multiple_variables(self, variables: dict):
         print(variables)
         aw(self.node.set_variables(variables))
         aw(self.client.sleep(0.1))
-        
-    def get_multiple_variables(self, variables:list) -> dict:
+
+    def get_multiple_variables(self, variables: list) -> dict:
         self.wait_for_variables(variables)
         return {variable: self.node.v[variable] for variable in variables}
 
@@ -209,7 +209,7 @@ class Thymio:
 
     def getProxH(self):
         return list(self.node.v.prox.horizontal)
-    
+
     def getSpeedR(self):
         return self.node.v.motor.right.speed * self.speedConversion
 
@@ -286,7 +286,9 @@ class Thymio:
         else:
             left, right = self.rotation_control(current_pos[-1], xb, yb)
         right, left = right / self.speedConversion, left / self.speedConversion
-        self.set_multiple_variables({"motor.left.target": [int(left)/self.speedConversion], "motor.right.target": [int(right)/self.speedConversion]})
+        self.set_multiple_variables(
+            {"motor.left.target": [int(left)], "motor.right.target": [int(right)]}
+        )
 
     def robot_close_waypoint(self, pos_estimate, xb, yb):
         """_summary_
