@@ -10,13 +10,21 @@ import cv2  				# Import the OpenCV library
 import numpy as np  			# Import Numpy library
 import math 				# for arctan
 import sys  				# Import sys library
+import queue
 
 
+
+def main(qpos: queue.Queue, qimg: queue.Queue):
+  """
+  Main method of the program.
+  """
+  
+  
 # Specify the ArUco dictionary
-desired_aruco_dictionary = "DICT_6X6_250"
+  desired_aruco_dictionary = "DICT_6X6_250"
 
 # Check if the dictionary is valid
-ARUCO_DICT = {
+  ARUCO_DICT = {
     "DICT_4X4_50": cv2.aruco.DICT_4X4_50,
     "DICT_4X4_100": cv2.aruco.DICT_4X4_100,
     "DICT_4X4_250": cv2.aruco.DICT_4X4_250,
@@ -34,19 +42,11 @@ ARUCO_DICT = {
     "DICT_7X7_250": cv2.aruco.DICT_7X7_250,
     "DICT_7X7_1000": cv2.aruco.DICT_7X7_1000,
     "DICT_ARUCO_ORIGINAL": cv2.aruco.DICT_ARUCO_ORIGINAL
-}
+  }
 
-if desired_aruco_dictionary not in ARUCO_DICT:
-    print(f"[ERROR] ArUco tag type '{desired_aruco_dictionary}' is not supported")
-    exit(1)
-
-
-
-
-def main():
-  """
-  Main method of the program.
-  """
+  if desired_aruco_dictionary not in ARUCO_DICT:
+      print(f"[ERROR] ArUco tag type '{desired_aruco_dictionary}' is not supported")
+      exit(1)
   # Check that we have a valid ArUco marker
   if ARUCO_DICT.get(desired_aruco_dictionary, None) is None:
     print("[INFO] ArUCo tag of '{}' is not supported".format(
@@ -79,13 +79,14 @@ def main():
 
     # Capture frame-by-frame
     # This method returns True/False as well as the video frame
-    ret, frame = cap.read()
+    _, frame = cap.read()
+    
 
     # Resize the frame to avoid cropping wrong aspect ratio
-    frame_resized = cv2.resize(frame, (1280, 720))
+    _ = cv2.resize(frame, (1280, 720))
 
     # Detect ArUco markers in the video frame
-    (corners, ids, rejected) = cv2.aruco.detectMarkers(
+    (corners, ids, _) = cv2.aruco.detectMarkers(
       frame, this_aruco_dictionary, parameters=this_aruco_parameters)
 
     # Check that at least one ArUco marker was detected
@@ -160,6 +161,9 @@ def main():
     # Apply the perspective warp
 #    normalized_image = cv2.warpPerspective(frame, matrix, (1280, 720))
 
+# add normalized_image to queue
+#    qimg.put(normalized_image)
+
     ## COMPUTE (X,Y,YAW) OF TAG #5 --------------------------------------------
     # Scaling map to mm 
     width = tag2[0]-tag1[0]
@@ -167,7 +171,8 @@ def main():
     #TODO: REMEASURE
     real_width = 800		#mm  --> REMEASURE, I DIDNT HAVE RULER
     real_height = 400		#mm  --> REMEASURE, I DIDNT HAVE RULER
-
+    #TODO: must be visible in the frame otherwise div by 0
+    #TODO: must have a verification that all 5 tags are visible in the frame
     x_scale = real_width/width
     y_scale = real_height/height
 
@@ -191,6 +196,8 @@ def main():
                 (pos5[0], pos5[1] - 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 
                 0.5, (0, 255, 0), 2)
+    qpos.put(scaled_pos5)
+    
     
     # Display the resulting frame
     cv2.imshow('frame', frame)
