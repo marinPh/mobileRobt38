@@ -92,24 +92,25 @@ def astar(costmap, start, goal):
     return []  # No path found
 
 
-def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles): 
-    #start: (x, y, angle1)  obstacles: (distance, angle2)   
-    #angle1 is angle of the thymio, angle2 is the angle of the obstacle to the thymio 
+def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles):
     """
-    Update the costmap with obstacles and compute the shortest path.
+    Update the costmap with obstacles, compute the shortest path, and return the path in cm.
     """
     # Convert start coordinates
     robot_y = start[0] // block_height
-    robot_x = start[1] // block_width  
-    
+    robot_x = start[1] // block_width
+
     for distance_cm, angle_deg in obstacles:
+        # Adjust the obstacle angle by adding the robot's angle
+        global_angle_deg = angle_deg + start[2]  # start[2] is the robot's angle1
+        global_angle_rad = np.radians(global_angle_deg)
+
         # Convert distance to pixels
         distance_pixels = distance_cm / cm_per_pixel
 
         # Calculate obstacle position in pixels
-        angle_rad = np.radians(angle_deg)
-        obstacle_x_pixels = robot_x * block_width + distance_pixels * np.cos(angle_rad)
-        obstacle_y_pixels = robot_y * block_height + distance_pixels * np.sin(angle_rad)
+        obstacle_x_pixels = robot_x * block_width + distance_pixels * np.cos(global_angle_rad)
+        obstacle_y_pixels = robot_y * block_height + distance_pixels * np.sin(global_angle_rad)
 
         # Convert to grid coordinates
         obstacle_x_grid = int(obstacle_x_pixels // block_width)
@@ -125,25 +126,49 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     # Calculate the shortest path using A*
     path = astar(costmap, dynamic_start, goal)
 
-    # Draw path on the image
+    # Convert the path to cm
+    path_cm = []
+    if path:
+        for row, col in path:
+            # Convert grid coordinates to pixel center
+            center_x_pixels = (col + 0.5) * block_width
+            center_y_pixels = (row + 0.5) * block_height
+
+            # Convert pixels to cm
+            center_x_cm = center_x_pixels * cm_per_pixel
+            center_y_cm = center_y_pixels * cm_per_pixel
+
+            # Append the point in cm
+            path_cm.append((center_x_cm, center_y_cm))
+
+    # Visualization using 'path' instead of 'path_cm'
     overlay_image = frame.copy()
     if path:
-        path_centers = []
-
+        path_centers_pixels = []
         for row, col in path:
-            # Calculate the center of the square
-            center_x = int((col + 0.5) * block_width)
-            center_y = int((row + 0.5) * block_height)
-            path_centers.append((center_x, center_y))
+            # Calculate the center of the grid cell in pixels
+            center_x_pixels = int((col + 0.5) * block_width)
+            center_y_pixels = int((row + 0.5) * block_height)
+            path_centers_pixels.append((center_x_pixels, center_y_pixels))
+
             # Draw the center point
-            cv2.circle(overlay_image, (center_x, center_y), 5, (0, 255, 0), -1)
+            cv2.circle(overlay_image, (center_x_pixels, center_y_pixels), 5, (0, 255, 0), -1)
 
         # Draw lines connecting the centers
-        for i in range(len(path_centers) - 1):
-            cv2.line(overlay_image, path_centers[i], path_centers[i + 1], (0, 0, 255), 2)
+        for i in range(len(path_centers_pixels) - 1):
+            cv2.line(
+                overlay_image,
+                path_centers_pixels[i],
+                path_centers_pixels[i + 1],
+                (0, 0, 255),
+                2,
+            )
 
     # Show the updated frame
     cv2.imshow("Live Path Update", overlay_image)
+
+    # Return the path in cm
+    return path_cm
 
 
 def main():
