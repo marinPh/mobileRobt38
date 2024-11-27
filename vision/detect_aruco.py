@@ -9,29 +9,40 @@ from __future__ import print_function  	# Python 2/3 compatibility
 import cv2  				# Import the OpenCV library
 import numpy as np  			# Import Numpy library
 import math 				# for arctan
+import sys  				# Import sys library
 
-desired_aruco_dictionary = "DICT_ARUCO_ORIGINAL"
+import cv2
 
-# The different ArUco dictionaries built into the OpenCV library. 
+# Specify the ArUco dictionary
+desired_aruco_dictionary = "DICT_6X6_250"
+
+# Check if the dictionary is valid
 ARUCO_DICT = {
-  "DICT_4X4_50": cv2.aruco.DICT_4X4_50,
-  "DICT_4X4_100": cv2.aruco.DICT_4X4_100,
-  "DICT_4X4_250": cv2.aruco.DICT_4X4_250,
-  "DICT_4X4_1000": cv2.aruco.DICT_4X4_1000,
-  "DICT_5X5_50": cv2.aruco.DICT_5X5_50,
-  "DICT_5X5_100": cv2.aruco.DICT_5X5_100,
-  "DICT_5X5_250": cv2.aruco.DICT_5X5_250,
-  "DICT_5X5_1000": cv2.aruco.DICT_5X5_1000,
-  "DICT_6X6_50": cv2.aruco.DICT_6X6_50,
-  "DICT_6X6_100": cv2.aruco.DICT_6X6_100,
-  "DICT_6X6_250": cv2.aruco.DICT_6X6_250,
-  "DICT_6X6_1000": cv2.aruco.DICT_6X6_1000,
-  "DICT_7X7_50": cv2.aruco.DICT_7X7_50,
-  "DICT_7X7_100": cv2.aruco.DICT_7X7_100,
-  "DICT_7X7_250": cv2.aruco.DICT_7X7_250,
-  "DICT_7X7_1000": cv2.aruco.DICT_7X7_1000,
-  "DICT_ARUCO_ORIGINAL": cv2.aruco.DICT_ARUCO_ORIGINAL
+    "DICT_4X4_50": cv2.aruco.DICT_4X4_50,
+    "DICT_4X4_100": cv2.aruco.DICT_4X4_100,
+    "DICT_4X4_250": cv2.aruco.DICT_4X4_250,
+    "DICT_4X4_1000": cv2.aruco.DICT_4X4_1000,
+    "DICT_5X5_50": cv2.aruco.DICT_5X5_50,
+    "DICT_5X5_100": cv2.aruco.DICT_5X5_100,
+    "DICT_5X5_250": cv2.aruco.DICT_5X5_250,
+    "DICT_5X5_1000": cv2.aruco.DICT_5X5_1000,
+    "DICT_6X6_50": cv2.aruco.DICT_6X6_50,
+    "DICT_6X6_100": cv2.aruco.DICT_6X6_100,
+    "DICT_6X6_250": cv2.aruco.DICT_6X6_250,
+    "DICT_6X6_1000": cv2.aruco.DICT_6X6_1000,
+    "DICT_7X7_50": cv2.aruco.DICT_7X7_50,
+    "DICT_7X7_100": cv2.aruco.DICT_7X7_100,
+    "DICT_7X7_250": cv2.aruco.DICT_7X7_250,
+    "DICT_7X7_1000": cv2.aruco.DICT_7X7_1000,
+    "DICT_ARUCO_ORIGINAL": cv2.aruco.DICT_ARUCO_ORIGINAL
 }
+
+if desired_aruco_dictionary not in ARUCO_DICT:
+    print(f"[ERROR] ArUco tag type '{desired_aruco_dictionary}' is not supported")
+    exit(1)
+
+
+
 
 def main():
   """
@@ -43,11 +54,11 @@ def main():
       args["type"]))
     sys.exit(0)
 
-  # Load the ArUco dictionary
-  print("[INFO] detecting '{}' markers...".format(
-    desired_aruco_dictionary))
-  this_aruco_dictionary = cv2.aruco.Dictionary_get(ARUCO_DICT[desired_aruco_dictionary])
-  this_aruco_parameters = cv2.aruco.DetectorParameters_create()
+  # Load the dictionary
+  print(f"[INFO] detecting '{desired_aruco_dictionary}' markers...")
+  this_aruco_dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT[desired_aruco_dictionary])
+  this_aruco_parameters = cv2.aruco.DetectorParameters()
+  
 
   # Start the video stream
   cap = cv2.VideoCapture(0)
@@ -154,7 +165,7 @@ def main():
     # Scaling map to mm 
     width = tag2[0]-tag1[0]
     height = tag3[1]-tag2[1]
-
+    #TODO: REMEASURE
     real_width = 800		#mm  --> REMEASURE, I DIDNT HAVE RULER
     real_height = 400		#mm  --> REMEASURE, I DIDNT HAVE RULER
 
@@ -194,7 +205,4 @@ def main():
   cap.release()
   cv2.destroyAllWindows()
 
-if __name__ == '__main__':
-  print(__doc__)
-  main()
 
