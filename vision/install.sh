@@ -83,8 +83,10 @@ echo ""
 # Installing Packages
 sudo apt install python3 -y
 sudo apt install pipx -y
-pipx install opencv-python --include-deps
 pipx install opencv-contrib-python --include-deps
+
+# Not sure I should be installing this one according to tutorial on aruco?
+#pipx install opencv-python --include-deps
 
 
 

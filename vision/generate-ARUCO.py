@@ -17,6 +17,11 @@ import sys				# Command line Arguments
 # Date created: 12/17/2021
 # Python version: 3.8
 # Reference: https://www.pyimagesearch.com/2020/12/14/generating-aruco-markers-with-opencv-and-python/
+#
+
+# Following tutorial Here
+# https://automaticaddison.com/how-to-create-an-aruco-marker-using-opencv-python/
+
 
 # Check if no arguments are passed, except the script name
 if len(sys.argv) == 1:
