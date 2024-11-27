@@ -11,7 +11,6 @@ import numpy as np  			# Import Numpy library
 import math 				# for arctan
 import sys  				# Import sys library
 
-import cv2
 
 # Specify the ArUco dictionary
 desired_aruco_dictionary = "DICT_6X6_250"
