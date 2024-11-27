@@ -49,9 +49,9 @@ def main(qpos: queue.Queue, qimg: queue.Queue):
       exit(1)
   # Check that we have a valid ArUco marker
   if ARUCO_DICT.get(desired_aruco_dictionary, None) is None:
-    print("[INFO] ArUCo tag of '{}' is not supported".format(
+      print("[INFO] ArUCo tag of '{}' is not supported".format(
       args["type"]))
-    sys.exit(0)
+      sys.exit(0)
 
   # Load the dictionary
   print(f"[INFO] detecting '{desired_aruco_dictionary}' markers...")
