@@ -37,8 +37,8 @@ class Thymio:
         self.K_translation = 1 / (4 * self.Ts)
 
         self.W = np.diag([0.1, 0.1, 0.01, 0.1, 0.1, 0.01])
-        self.V_c = np.diag([0.1, 0.1, 0.00001, 0.1, 0.00001])
-        self.V_nc = np.diag([100, 75.72 / (self.L**2)])  # Wheels
+        self.V_c = np.diag([0.1, 0.1, 0.01, 100, 75.72 / (self.L**2)])
+        self.V_nc = np.diag([0.01, 100, 75.72 / (self.L**2)])  # Wheels
         self.A = np.array(
             [
                 [1, 0, 0, self.Ts, 0, 0],
@@ -66,6 +66,7 @@ class Thymio:
     def g_nc(self, z):
         theta = z[2]
         s_nc = [
+            theta,
             z[3] * np.cos(theta)
             + z[4] * np.sin(theta),  # x_dot*cos(theta) + y_dot*sin(theta)
             self.L * z[5],
@@ -95,6 +96,7 @@ class Thymio:
         theta = z[2]
         x_dot, y_dot = z[3], z[4]
         grad = [
+            [0, 0, 1, 0, 0, 0],
             [
                 0,
                 0,
@@ -118,12 +120,13 @@ class Thymio:
     ):
         s_nc = np.array(
             [
+                theta_measured,
                 (V_left_measure + V_right_measure) / 2,
                 (V_left_measure - V_right_measure) / 2,
             ]
         )
         if camera_working:
-            s_c = np.append(np.array([x_measured, y_measured, theta_measured]), s_nc)
+            s_c = np.append(np.array([x_measured, y_measured]), s_nc)
             return s_c
         return s_nc
 
@@ -149,7 +152,7 @@ class Thymio:
                 pos.append((-1, 0))
             else:
                 detected = True
-                pos.append((distance*10, angle))
+                pos.append((distance * 10, angle))
         return pos, detected
 
     def filtering_step(
