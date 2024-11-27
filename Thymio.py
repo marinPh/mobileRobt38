@@ -37,8 +37,8 @@ class Thymio:
         self.K_translation = 1 / (4 * self.Ts)
 
         self.W = np.diag([0.1, 0.1, 0.01, 0.1, 0.1, 0.01])
-        self.V_c = np.diag([0.1, 0.1, 0.00001, 0.1, 0.00001])
-        self.V_nc = np.diag([100, 75.72 / (self.L**2)])  # Wheels
+        self.V_c = np.diag([0.1, 0.1, 0.01, 100, 75.72 / (self.L**2)])
+        self.V_nc = np.diag([0.01, 100, 75.72 / (self.L**2)])  # Wheels
         self.A = np.array(
             [
                 [1, 0, 0, self.Ts, 0, 0],
