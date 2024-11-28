@@ -11,68 +11,52 @@ import numpy as np  			# Import Numpy library
 import math 				# for arctan
 import sys  				# Import sys library
 import queue
-import matplotlib.pyplot as plt
 
+desired_aruco_dictionary = "DICT_ARUCO_ORIGINAL"
 
+# The different ArUco dictionaries built into the OpenCV library. 
+ARUCO_DICT = {
+  "DICT_4X4_50": cv2.aruco.DICT_4X4_50,
+  "DICT_4X4_100": cv2.aruco.DICT_4X4_100,
+  "DICT_4X4_250": cv2.aruco.DICT_4X4_250,
+  "DICT_4X4_1000": cv2.aruco.DICT_4X4_1000,
+  "DICT_5X5_50": cv2.aruco.DICT_5X5_50,
+  "DICT_5X5_100": cv2.aruco.DICT_5X5_100,
+  "DICT_5X5_250": cv2.aruco.DICT_5X5_250,
+  "DICT_5X5_1000": cv2.aruco.DICT_5X5_1000,
+  "DICT_6X6_50": cv2.aruco.DICT_6X6_50,
+  "DICT_6X6_100": cv2.aruco.DICT_6X6_100,
+  "DICT_6X6_250": cv2.aruco.DICT_6X6_250,
+  "DICT_6X6_1000": cv2.aruco.DICT_6X6_1000,
+  "DICT_7X7_50": cv2.aruco.DICT_7X7_50,
+  "DICT_7X7_100": cv2.aruco.DICT_7X7_100,
+  "DICT_7X7_250": cv2.aruco.DICT_7X7_250,
+  "DICT_7X7_1000": cv2.aruco.DICT_7X7_1000,
+  "DICT_ARUCO_ORIGINAL": cv2.aruco.DICT_ARUCO_ORIGINAL
+}
 
-def main(qpos: queue.Queue, qimg: queue.Queue):
+def main(qpos: queue.Queue,qimg: queue.Queue):
   """
   Main method of the program.
   """
-  
-  print("[INFO] starting ArUco marker detector...")
-  
-  
-# Specify the ArUco dictionary
-  desired_aruco_dictionary = "DICT_6X6_250"
-
-# Check if the dictionary is valid
-  ARUCO_DICT = {
-    "DICT_4X4_50": cv2.aruco.DICT_4X4_50,
-    "DICT_4X4_100": cv2.aruco.DICT_4X4_100,
-    "DICT_4X4_250": cv2.aruco.DICT_4X4_250,
-    "DICT_4X4_1000": cv2.aruco.DICT_4X4_1000,
-    "DICT_5X5_50": cv2.aruco.DICT_5X5_50,
-    "DICT_5X5_100": cv2.aruco.DICT_5X5_100,
-    "DICT_5X5_250": cv2.aruco.DICT_5X5_250,
-    "DICT_5X5_1000": cv2.aruco.DICT_5X5_1000,
-    "DICT_6X6_50": cv2.aruco.DICT_6X6_50,
-    "DICT_6X6_100": cv2.aruco.DICT_6X6_100,
-    "DICT_6X6_250": cv2.aruco.DICT_6X6_250,
-    "DICT_6X6_1000": cv2.aruco.DICT_6X6_1000,
-    "DICT_7X7_50": cv2.aruco.DICT_7X7_50,
-    "DICT_7X7_100": cv2.aruco.DICT_7X7_100,
-    "DICT_7X7_250": cv2.aruco.DICT_7X7_250,
-    "DICT_7X7_1000": cv2.aruco.DICT_7X7_1000,
-    "DICT_ARUCO_ORIGINAL": cv2.aruco.DICT_ARUCO_ORIGINAL
-  }
-
-  if desired_aruco_dictionary not in ARUCO_DICT:
-      print(f"[ERROR] ArUco tag type '{desired_aruco_dictionary}' is not supported")
-      exit(1)
   # Check that we have a valid ArUco marker
   if ARUCO_DICT.get(desired_aruco_dictionary, None) is None:
-      print("[INFO] ArUCo tag of '{}' is not supported".format(
+    print("[INFO] ArUCo tag of '{}' is not supported".format(
       args["type"]))
-      sys.exit(0)
+    sys.exit(0)
 
-  # Load the dictionary
-  print(f"[INFO] detecting '{desired_aruco_dictionary}' markers...")
-  this_aruco_dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT[desired_aruco_dictionary])
-  this_aruco_parameters = cv2.aruco.DetectorParameters()
-  
+  # Load the ArUco dictionary
+  print("[INFO] detecting '{}' markers...".format(
+    desired_aruco_dictionary))
+  this_aruco_dictionary = cv2.aruco.Dictionary_get(ARUCO_DICT[desired_aruco_dictionary])
+  this_aruco_parameters = cv2.aruco.DetectorParameters_create()
 
   # Start the video stream
-  print("[INFO] starting video stream")
   cap = cv2.VideoCapture(1)
   
   # Set resolution
-  print("[INFO] setting resolution")
   cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # Set the width
   cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # Set the height
-  
-  _,frame = cap.read()
-  plt.imshow(frame)
   
   # Corners of the ArUco square (initialize as empty)
   square_corners = []
@@ -87,24 +71,18 @@ def main(qpos: queue.Queue, qimg: queue.Queue):
 
     # Capture frame-by-frame
     # This method returns True/False as well as the video frame
-    working, frame = cap.read()
-    if not working:
-      print("[ERROR] no video frame available")
-      break
-    
+    ret, frame = cap.read()
 
     # Resize the frame to avoid cropping wrong aspect ratio
-    _ = cv2.resize(frame, (1280, 720))
-    plt.imshow(frame)
+    frame = cv2.resize(frame, (1280, 720))
 
     # Detect ArUco markers in the video frame
-    (corners, ids, _) = cv2.aruco.detectMarkers(
+    (corners, ids, rejected) = cv2.aruco.detectMarkers(
       frame, this_aruco_dictionary, parameters=this_aruco_parameters)
-    print(f"[INFO] detected {len(corners)} ArUco markers, {corners}",end="\r")
 
     # Check that at least one ArUco marker was detected
     if len(corners) > 0:
-      print(f"[INFO] detected {len(corners)} ArUco markers, {corners}",end = "\r")
+      print("[INFO] ArUco marker(s) detected", len(corners), print(ids), end="\r")
       # Flatten the ArUco IDs list
       ids = ids.flatten()
 
@@ -158,40 +136,39 @@ def main(qpos: queue.Queue, qimg: queue.Queue):
       cv2.line(frame, tag2, tag3, (255, 0, 0), 2)     
       cv2.line(frame, tag3, tag4, (255, 0, 0), 2)     
       cv2.line(frame, tag4, tag1, (255, 0, 0), 2) 
-
+  
       ## WARP PERSPECTIVE -------------------------------------------------------
       # Not paid enough to do this properly
       # for now we do a taccone!
-
+  
       # Collect all corners of the square formed by ArUco markers
-#      square_corners = np.array([tag1,tag2,tag3,tag4])
-
+#       square_corners = np.array([tag1,tag2,tag3,tag4])
+    
       # Define output corners
-#      output_corners = np.array([[0,0],[1280,0],[1280,720],[0,720]])
-
+#       output_corners = np.array([[0,0],[1280,0],[1280,720],[0,720]])
+  
       # Compute the perspective transform matrix
-#      matrix = cv2.getPerspectiveTransform(square_corners, output_corners)
-
+#       matrix = cv2.getPerspectiveTransform(square_corners, output_corners)
+      
       # Apply the perspective warp
-#      normalized_image = cv2.warpPerspective(frame, matrix, (1280, 720))
-
-# ad  d normalized_image to queue
-#      qimg.put(normalized_image)
-
+#       normalized_image = cv2.warpPerspective(frame, matrix, (1280, 720))
+  
       ## COMPUTE (X,Y,YAW) OF TAG #5 --------------------------------------------
       # Scaling map to mm 
       width = tag2[0]-tag1[0]
       height = tag3[1]-tag2[1]
-
-      #FIXME: why is width bigger than height?
-
+      
       real_width = 841		#mm  --> REMEASURE, I DIDNT HAVE RULER
       real_height = 594		#mm  --> REMEASURE, I DIDNT HAVE RULER
-      #TODO: must be visible in the frame otherwise div by 0
-      #TODO: must have a verification that all 5 tags are visible in the frame
+      
+      if width >= 0 or height >= 0:
+        print("No map detected" ,tag1, tag2, tag3, tag4)
+        cv2.imshow('frame', frame)
+        continue
+  
       x_scale = real_width/width
       y_scale = real_height/height
-
+  
       # Computing #5 Yaw
       dx = corner5A[0] - corner5B[0]
       dy = corner5A[1] - corner5B[1]
@@ -202,30 +179,29 @@ def main(qpos: queue.Queue, qimg: queue.Queue):
       scaled_pos5 = ( ( pos5[0] - tag1[0] ) * x_scale, 
                       ( pos5[1] - tag1[1] ) * y_scale,
                       ( yaw5 ) )
-
-      print(scaled_pos5)
-      print("\n")
-
+      
+    
+  
       # Draw Tag #5 Position on Frame
       cv2.putText(frame, 
                   f"(X: {int(scaled_pos5[0])}, Y: {int(scaled_pos5[1])}, YAW: {int(scaled_pos5[2])})", 
                   (pos5[0], pos5[1] - 50),
                   cv2.FONT_HERSHEY_SIMPLEX, 
                   0.5, (0, 255, 0), 2)
+      
+      # Display the resulting frame
+      qimg.put(frame)
       qpos.put(scaled_pos5)
-    
-    
-    # Display the resulting frame
-    
-    
-
-    # If "q" is pressed on the keyboard, 
-    # exit this loop
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-      break
+      
+      cv2.imshow('frame', frame)
+      
+  
+      # If "q" is pressed on the keyboard, 
+      # exit this loop
+      if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
   # Close down the video stream
   cap.release()
   cv2.destroyAllWindows()
-
 
