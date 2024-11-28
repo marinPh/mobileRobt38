@@ -168,9 +168,11 @@ def main(qpos: queue.Queue, qimg: queue.Queue):
     # Scaling map to mm 
     width = tag2[0]-tag1[0]
     height = tag3[1]-tag2[1]
-    #TODO: REMEASURE
-    real_width = 800		#mm  --> REMEASURE, I DIDNT HAVE RULER
-    real_height = 400		#mm  --> REMEASURE, I DIDNT HAVE RULER
+    print(tag1, tag2, tag3, tag4)
+    #FIXME: why is width bigger than height?
+    
+    real_width = 841		#mm  --> REMEASURE, I DIDNT HAVE RULER
+    real_height = 594		#mm  --> REMEASURE, I DIDNT HAVE RULER
     #TODO: must be visible in the frame otherwise div by 0
     #TODO: must have a verification that all 5 tags are visible in the frame
     x_scale = real_width/width

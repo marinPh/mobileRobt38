@@ -5,7 +5,7 @@ from heapq import heappush, heappop
 # Mouse callback to get points
 points = []
 
-def select_points(event, x, y, flags, param):
+def select_points(event, x, y,_, param):
     """
     Mouse callback function to capture clicks for selecting start and goal points.
     """
@@ -18,20 +18,20 @@ def select_points(event, x, y, flags, param):
         cv2.circle(
             temp_image, (x, y), 5, (0, 0, 255), -1
         )  # Draw a red dot for the click
-        cv2.imshow("Select Start and Goal", temp_image)
+        cv2.imshow("Select Goal", temp_image)
         # Close the window after two points are clicked
-        if len(points) == 2:
-            cv2.destroyWindow("Select Start and Goal")
+        if len(points) == 1:
+            cv2.destroyWindow("Select Goal")
 
 
-def create_costmap(image, grid_rows, grid_cols):
+def create_costmap(image, grid_rows, grid_cols)-> tuple:
     """
     Discretize the image into a costmap.
     """
     height, width = image.shape
-    block_height = height // grid_rows
-    block_width = width // grid_cols
-    costmap = np.zeros((grid_rows, grid_cols), dtype=np.int8)
+    block_height :int = height // grid_rows
+    block_width :int = width // grid_cols
+    costmap :np.ndarray = np.zeros((grid_rows, grid_cols), dtype=np.int8)
 
     for i in range(grid_rows):
         for j in range(grid_cols):
@@ -92,15 +92,17 @@ def astar(costmap, start, goal):
     return []  # No path found
 
 
-def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles):
+def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles) -> list:
     """
     Update the costmap with obstacles, compute the shortest path, and return the path in cm.
     """
     # Convert start coordinates
     robot_y = start[0] // block_height
     robot_x = start[1] // block_width
-
+    ##FIXME: we are supposed to be in mm @neilc720 can you verify if this is correct
     for distance_cm, angle_deg in obstacles:
+        if distance_cm < 0:
+            continue
         # Adjust the obstacle angle by adding the robot's angle
         global_angle_deg = angle_deg + start[2]  # start[2] is the robot's angle1
         global_angle_rad = np.radians(global_angle_deg)
@@ -171,7 +173,7 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     return path_cm
 
 
-def main():
+def main(start):
     cap = cv2.VideoCapture(0)  # Use 0 for the default camera
     if not cap.isOpened():
         print("Error: Could not open video stream.")
@@ -201,26 +203,23 @@ def main():
 
     # Select start and goal points
     display_image = frame.copy()
-    cv2.imshow("Select Start and Goal", display_image)
-    cv2.setMouseCallback("Select Start and Goal", select_points, display_image)
-    print("Click two points: Start and Goal.")
+    cv2.imshow("Select  Goal", display_image)
+    cv2.setMouseCallback("Select  Goal", select_points, display_image)
+    print("Click 1 points: Goal.")
     cv2.waitKey(0)
 
-    if len(points) < 2:
+    if len(points) < 1:
         print("Please select two points!")
         cap.release()
         cv2.destroyAllWindows()
         return
 
     # Map points to grid
-    start = (
+    goal = (
         points[0][0] * height_division // frame_gray.shape[0],
         points[0][1] * width_division // frame_gray.shape[1],
     )
-    goal = (
-        points[1][0] * height_division // frame_gray.shape[0],
-        points[1][1] * width_division // frame_gray.shape[1],
-    )
+
 
  
     while cap.isOpened():
