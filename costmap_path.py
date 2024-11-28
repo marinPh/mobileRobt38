@@ -38,6 +38,7 @@ def create_costmap(image, grid_rows, grid_cols):
     """
     Discretize the binary image into a costmap.
     """
+    _, binary_image = cv2.threshold(image, 200, 255, cv2.THRESH_BINARY)
     height, width = image.shape
     block_height = height // grid_rows
     block_width = width // grid_cols
@@ -45,7 +46,7 @@ def create_costmap(image, grid_rows, grid_cols):
 
     for i in range(grid_rows):
         for j in range(grid_cols):
-            block = image[i * block_height: (i + 1) * block_height,
+            block = binary_image[i * block_height: (i + 1) * block_height,
                           j * block_width: (j + 1) * block_width]
             if np.mean(block) > 127:  # Check for walkable region (white)
                 costmap[i, j] = 0  # Walkable
@@ -166,8 +167,7 @@ def main():
         print("Invalid input! Please enter integers.")
         return
 
-    # Convert the image to binary
-    _, binary_image = cv2.threshold(original_image, 200, 255, cv2.THRESH_BINARY)
+    
 
     # Display the original image for both start and goal selection
     display_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2BGR)
@@ -184,21 +184,21 @@ def main():
     start_pixel, goal_pixel = points[0], points[1]
 
     # Create the costmap
-    costmap, block_height, block_width = create_costmap(binary_image, height_division, width_division)
+    costmap, block_height, block_width = create_costmap(original_image, height_division, width_division)
 
     # Calculate real-world scaling
-    cm_per_pixel_height = 40 / binary_image.shape[0]
-    cm_per_pixel_width = 80 / binary_image.shape[1]
+    cm_per_pixel_height = 40 / original_image.shape[0]
+    cm_per_pixel_width = 80 / original_image.shape[1]
     cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
 
     # Convert start and goal to grid coordinates
     start = (
-        start_pixel[0] * height_division // binary_image.shape[0],
-        start_pixel[1] * width_division // binary_image.shape[1],
+        start_pixel[0] * height_division // original_image.shape[0],
+        start_pixel[1] * width_division // original_image.shape[1],
     )
     goal = (
-        goal_pixel[0] * height_division // binary_image.shape[0],
-        goal_pixel[1] * width_division // binary_image.shape[1],
+        goal_pixel[0] * height_division // original_image.shape[0],
+        goal_pixel[1] * width_division // original_image.shape[1],
     )
 
     # Example obstacles (optional)
