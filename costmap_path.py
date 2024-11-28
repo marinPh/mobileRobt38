@@ -154,7 +154,7 @@ def update(costmap, block_height, block_width, start, goal, display_image, obsta
     return path, costmap
 
 
-def init(original_image):
+def init(original_image,start):
     try:
         height_division = int(input("Enter the number of rows (N): "))
         width_division = int(input("Enter the number of columns (M): "))
@@ -174,24 +174,21 @@ def init(original_image):
     display_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2BGR)
     cv2.imshow("Select Start and Goal", display_image)
     cv2.setMouseCallback("Select Start and Goal", select_points, display_image)
-    print("Click two points: Start and Goal.")
+    print("Click 1 points: Goal.")
     cv2.waitKey(0)
 
-    if len(points) < 2:
+    if len(points) < 1:
         print("Please select two points!")
         return
 
     # Map points to grid
-    start = (
+    goal = (
         points[0][0] * height_division // original_image.shape[0],
         points[0][1] * width_division // original_image.shape[1],
     )
-    goal = (
-        points[1][0] * height_division // original_image.shape[0],
-        points[1][1] * width_division // original_image.shape[1],
-    )
+   
 
-    return costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
+    return costmap, block_height, block_width, goal, display_image, cm_per_pixel
 
 
 def main():
