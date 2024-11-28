@@ -4,34 +4,39 @@ from heapq import heappush, heappop
 
 # GLOBAL VARIABLES ============================================
 # Load the image
-image_path = r"./grid.png"
+image_path = r"C:/Users/neilc/OneDrive/Bureau/Exercises_mobile/mobileRobt38/grid2.jpeg"
+print(f"Loading image from: {image_path}")
 original_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-# Mouse callback to get points
+if original_image is None:
+    print("Error: Image could not be loaded. Check the file path and format.")
+    exit(1)
+
+# Global list to store user-selected points
 points = []
+
 
 def select_points(event, x, y, flags, param):
     """
-    Mouse callback function to capture clicks for selecting start and goal points.
+    Mouse callback function to capture the start and goal points.
     """
     global points
     if event == cv2.EVENT_LBUTTONDOWN:
-        print(f"Mouse clicked at: ({x}, {y})")  # Debug print
-        points.append((y, x))  # Append (row, col) in grid terms
-        # Display the click on the image
+        print(f"Point selected at: ({x}, {y})")
+        points.append((y, x))  # Append the selected point
         temp_image = param.copy()
-        cv2.circle(
-            temp_image, (x, y), 5, (0, 0, 255), -1
-        )  # Draw a red dot for the click
+        color = (255, 0, 0) if len(points) == 1 else (0, 0, 255)  # Blue for start, red for goal
+        cv2.circle(temp_image, (x, y), 5, color, -1)  # Draw a circle for the selected point
         cv2.imshow("Select Start and Goal", temp_image)
-        # Close the window after two points are clicked
+
+        # Close the window if two points are selected
         if len(points) == 2:
             cv2.destroyWindow("Select Start and Goal")
 
 
 def create_costmap(image, grid_rows, grid_cols):
     """
-    Discretize the image into a costmap.
+    Discretize the binary image into a costmap.
     """
     height, width = image.shape
     block_height = height // grid_rows
@@ -40,9 +45,9 @@ def create_costmap(image, grid_rows, grid_cols):
 
     for i in range(grid_rows):
         for j in range(grid_cols):
-            block = image[i * block_height : (i + 1) * block_height,
-                          j * block_width : (j + 1) * block_width]
-            if np.mean(block) > 127:  # Assume white is walkable (mean > 127)
+            block = image[i * block_height: (i + 1) * block_height,
+                          j * block_width: (j + 1) * block_width]
+            if np.mean(block) > 127:  # Check for walkable region (white)
                 costmap[i, j] = 0  # Walkable
             else:
                 costmap[i, j] = 1  # Obstacle
@@ -123,7 +128,7 @@ def update(costmap, block_height, block_width, start, goal, display_image, obsta
     # Calculate the shortest path using A*
     path = astar(costmap, start, goal)
 
-    # Draw path on the image
+    # Draw path on the original image
     if path:
         overlay_image = display_image.copy()
         path_centers = []
@@ -144,17 +149,16 @@ def update(costmap, block_height, block_width, start, goal, display_image, obsta
 
         cv2.imshow("Shortest Path", overlay_image)
 
-        # Wait for 'q' to close the path-drawn window
-        while True:
-            key = cv2.waitKey(1)
-            if key == ord("q"):
-                cv2.destroyWindow("Shortest Path")
-                break
-
     return path, costmap
 
 
-def init(original_image,start):
+def main():
+    """
+    Main function to initialize, select start and goal, and compute the path.
+    """
+    global points
+
+    # Ask for grid dimensions
     try:
         height_division = int(input("Enter the number of rows (N): "))
         width_division = int(input("Enter the number of columns (M): "))
@@ -162,41 +166,59 @@ def init(original_image,start):
         print("Invalid input! Please enter integers.")
         return
 
-    costmap, block_height, block_width = create_costmap(original_image, height_division, width_division)
+    # Convert the image to binary
+    _, binary_image = cv2.threshold(original_image, 200, 255, cv2.THRESH_BINARY)
 
-    # Simplified cm_per_pixel calculation
-    image_height, image_width = original_image.shape
-    cm_per_pixel_height = 40 / image_height  # 40 cm is the real-world height
-    cm_per_pixel_width = 80 / image_width   # 80 cm is the real-world width
-    cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
-
-    # Show the original image for user to click points
+    # Display the original image for both start and goal selection
     display_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2BGR)
     cv2.imshow("Select Start and Goal", display_image)
+
+    # Select start and goal points
     cv2.setMouseCallback("Select Start and Goal", select_points, display_image)
-    print("Click 1 points: Goal.")
-    cv2.waitKey(0)
+    print("Click to select the start (blue) and goal (red) points.")
 
-    if len(points) < 1:
-        print("Please select two points!")
-        return
+    # Wait for the points to be selected and the window to close automatically
+    while len(points) < 2:
+        cv2.waitKey(1)
 
-    # Map points to grid
-    goal = (
-        points[0][0] * height_division // original_image.shape[0],
-        points[0][1] * width_division // original_image.shape[1],
+    start_pixel, goal_pixel = points[0], points[1]
+
+    # Create the costmap
+    costmap, block_height, block_width = create_costmap(binary_image, height_division, width_division)
+
+    # Calculate real-world scaling
+    cm_per_pixel_height = 40 / binary_image.shape[0]
+    cm_per_pixel_width = 80 / binary_image.shape[1]
+    cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
+
+    # Convert start and goal to grid coordinates
+    start = (
+        start_pixel[0] * height_division // binary_image.shape[0],
+        start_pixel[1] * width_division // binary_image.shape[1],
     )
-   
+    goal = (
+        goal_pixel[0] * height_division // binary_image.shape[0],
+        goal_pixel[1] * width_division // binary_image.shape[1],
+    )
 
-    return costmap, block_height, block_width, goal, display_image, cm_per_pixel
+    # Example obstacles (optional)
+    obstacles = []
 
+    # Compute and visualize the path
+    path, updated_costmap = update(costmap, block_height, block_width, start, goal, display_image, obstacles, cm_per_pixel)
 
-def main():
-    result = init(original_image)
-    if result:
-        costmap, block_height, block_width, start, goal, display_image, cm_per_pixel = result
-        obstacles = [(30, 45), (50, -30), (70, 90)]  # Example: (distance in cm, angle in degrees)
-        update(costmap, block_height, block_width, start, goal, display_image, obstacles, cm_per_pixel)
+    if path:
+        print("Path found (in grid coordinates):", path)
+    else:
+        print("No path found!")
+
+    # Wait for 'q' to close all windows
+    print("Press 'q' to close all windows.")
+    while True:
+        key = cv2.waitKey(1)
+        if key == ord("q"):
+            cv2.destroyAllWindows()
+            break
 
 
 if __name__ == "__main__":
