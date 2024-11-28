@@ -28,6 +28,7 @@ def create_costmap(image, grid_rows, grid_cols):
     """
     Discretize the image into a costmap.
     """
+    _, binary_image = cv2.threshold(image, 200, 255, cv2.THRESH_BINARY)
     height, width = image.shape
     block_height = height // grid_rows
     block_width = width // grid_cols
@@ -35,7 +36,7 @@ def create_costmap(image, grid_rows, grid_cols):
 
     for i in range(grid_rows):
         for j in range(grid_cols):
-            block = image[i * block_height : (i + 1) * block_height,
+            block = binary_image[i * block_height : (i + 1) * block_height,
                           j * block_width : (j + 1) * block_width]
             if np.mean(block) > 127:  # Assume white is walkable (mean > 127)
                 costmap[i, j] = 0  # Walkable
