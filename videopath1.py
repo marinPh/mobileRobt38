@@ -5,7 +5,7 @@ from heapq import heappush, heappop
 # Mouse callback to get points
 points = []
 
-def select_points(event, x, y, flags, param):
+def select_points(event, x, y,_, param):
     """
     Mouse callback function to capture clicks for selecting start and goal points.
     """
@@ -18,20 +18,20 @@ def select_points(event, x, y, flags, param):
         cv2.circle(
             temp_image, (x, y), 5, (0, 0, 255), -1
         )  # Draw a red dot for the click
-        cv2.imshow("Select Start and Goal", temp_image)
+        cv2.imshow("Select Goal", temp_image)
         # Close the window after two points are clicked
-        if len(points) == 2:
-            cv2.destroyWindow("Select Start and Goal")
+        if len(points) == 1:
+            cv2.destroyWindow("Select Goal")
 
 
-def create_costmap(image, grid_rows, grid_cols):
+def create_costmap(image, grid_rows, grid_cols)-> tuple:
     """
     Discretize the image into a costmap.
     """
     height, width = image.shape
-    block_height = height // grid_rows
-    block_width = width // grid_cols
-    costmap = np.zeros((grid_rows, grid_cols), dtype=np.int8)
+    block_height :int = height // grid_rows
+    block_width :int = width // grid_cols
+    costmap :np.ndarray = np.zeros((grid_rows, grid_cols), dtype=np.int8)
 
     for i in range(grid_rows):
         for j in range(grid_cols):
@@ -136,15 +136,17 @@ def path_visualization(frame, path, block_width, block_height):
         
 
 
-def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles):
+def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles) -> list:
     """
     Update the costmap with obstacles, compute the shortest path, and return the path in cm.
     """
     # Convert start coordinates
     robot_y = start[0] // block_height
     robot_x = start[1] // block_width
-
+    ##FIXME: we are supposed to be in mm @neilc720 can you verify if this is correct
     for distance_cm, angle_deg in obstacles:
+        if distance_cm < 0:
+            continue
         # Adjust the obstacle angle by adding the robot's angle
         global_angle_deg = angle_deg + start[2]  # start[2] is the robot's angle1
         global_angle_rad = np.radians(global_angle_deg)
@@ -212,48 +214,39 @@ def init(cap, start):
 
     # Select the goal point
     display_image = frame.copy()
-    cv2.imshow("Select Goal", display_image)
+    cv2.imshow("Select Start and Goal", display_image)
     cv2.setMouseCallback("Select Goal", select_points, display_image)
-    print("Click to select the goal point.")
-
-    cv2.waitKey(0)  # Wait until the user selects the goal and the window closes
+    print("Click one points:  Goal.")
+    cv2.waitKey(0)
 
     if len(points) < 1:
-        print("No goal point selected!")
+        print("Please select one points!")
         cap.release()
         cv2.destroyAllWindows()
         return
 
-    # Convert the goal point to grid coordinates
-    goal = (
+    # Map points to grid
+    start = (
         points[0][0] * height_division // frame_gray.shape[0],
         points[0][1] * width_division // frame_gray.shape[1],
     )
-
-    # Convert the start position to grid coordinates
-    start_grid = (
-        start[1] * height_division // frame_gray.shape[0],  # y-coordinate
-        start[0] * width_division // frame_gray.shape[1],  # x-coordinate
+    goal = (
+        points[1][0] * height_division // frame_gray.shape[0],
+        points[1][1] * width_division // frame_gray.shape[1],
     )
 
-    # Compute the shortest path using A*
-    path = astar(costmap, start_grid, goal)
+ 
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    if not path:
-        print("No path found!")
-        cap.release()
-        cv2.destroyAllWindows()
-        return
+        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles=[])
 
-    # Convert the path to real-world coordinates (in cm)
-    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
-
-    # Visualize the path on the frame
-    path_visualization(frame, path, block_width, block_height)
-
-    # Display the final path visualization
-    cv2.imshow("Final Path Visualization", frame)
-    cv2.waitKey(0)  # Wait for a key press to close the visualization
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
 
     cap.release()
     cv2.destroyAllWindows()
