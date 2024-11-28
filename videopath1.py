@@ -213,7 +213,7 @@ def init(frame, start):
 
     if len(points) < 1:
         print("No goal point selected!")
-        cap.release()
+        frame.release()
         cv2.destroyAllWindows()
         return
 
@@ -234,7 +234,7 @@ def init(frame, start):
 
     if not path:
         print("No path found!")
-        cap.release()
+        frame.release()
         cv2.destroyAllWindows()
         return
 
@@ -248,7 +248,7 @@ def init(frame, start):
     cv2.imshow("Final Path Visualization", frame)
     cv2.waitKey(0)  # Wait for a key press to close the visualization
 
-    cap.release()
+    frame.release()
     cv2.destroyAllWindows()
 
 
