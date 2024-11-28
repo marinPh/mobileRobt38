@@ -214,39 +214,48 @@ def init(cap, start):
 
     # Select the goal point
     display_image = frame.copy()
-    cv2.imshow("Select Start and Goal", display_image)
+    cv2.imshow("Select Goal", display_image)
     cv2.setMouseCallback("Select Goal", select_points, display_image)
-    print("Click one points:  Goal.")
-    cv2.waitKey(0)
+    print("Click to select the goal point.")
+
+    cv2.waitKey(0)  # Wait until the user selects the goal and the window closes
 
     if len(points) < 1:
-        print("Please select one points!")
+        print("No goal point selected!")
         cap.release()
         cv2.destroyAllWindows()
         return
 
-    # Map points to grid
-    start = (
+    # Convert the goal point to grid coordinates
+    goal = (
         points[0][0] * height_division // frame_gray.shape[0],
         points[0][1] * width_division // frame_gray.shape[1],
     )
-    goal = (
-        points[1][0] * height_division // frame_gray.shape[0],
-        points[1][1] * width_division // frame_gray.shape[1],
+
+    # Convert the start position to grid coordinates
+    start_grid = (
+        start[1] * height_division // frame_gray.shape[0],  # y-coordinate
+        start[0] * width_division // frame_gray.shape[1],  # x-coordinate
     )
 
- 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
+    # Compute the shortest path using A*
+    path = astar(costmap, start_grid, goal)
 
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles=[])
+    if not path:
+        print("No path found!")
+        cap.release()
+        cv2.destroyAllWindows()
+        return
 
-        # Break the loop if 'q' is pressed
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+    # Convert the path to real-world coordinates (in cm)
+    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
+
+    # Visualize the path on the frame
+    path_visualization(frame, path, block_width, block_height)
+
+    # Display the final path visualization
+    cv2.imshow("Final Path Visualization", frame)
+    cv2.waitKey(0)  # Wait for a key press to close the visualization
 
     cap.release()
     cv2.destroyAllWindows()
