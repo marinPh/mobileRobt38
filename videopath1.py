@@ -91,6 +91,50 @@ def astar(costmap, start, goal):
 
     return []  # No path found
 
+def path_pix_to_cm(path, block_width, block_height, cm_per_pixel):
+    path_cm = []
+    if path:
+        for row, col in path:
+            # Convert grid coordinates to pixel center
+            center_x_pixels = (col + 0.5) * block_width
+            center_y_pixels = (row + 0.5) * block_height
+
+            # Convert pixels to cm
+            center_x_cm = center_x_pixels * cm_per_pixel
+            center_y_cm = center_y_pixels * cm_per_pixel
+
+            # Append the point in cm
+            path_cm.append((center_x_cm, center_y_cm))
+    return path_cm
+
+def path_visualization(frame, path, block_width, block_height):
+    overlay_image = frame.copy()
+    if path:
+        path_centers_pixels = []
+        for row, col in path:
+            # Calculate the center of the grid cell in pixels
+            center_x_pixels = int((col + 0.5) * block_width)
+            center_y_pixels = int((row + 0.5) * block_height)
+            path_centers_pixels.append((center_x_pixels, center_y_pixels))
+
+            # Draw the center point
+            cv2.circle(overlay_image, (center_x_pixels, center_y_pixels), 5, (0, 255, 0), -1)
+
+        # Draw lines connecting the centers
+        for i in range(len(path_centers_pixels) - 1):
+            cv2.line(
+                overlay_image,
+                path_centers_pixels[i],
+                path_centers_pixels[i + 1],
+                (0, 0, 255),
+                2,
+            )
+
+    # Show the updated frame
+    cv2.imshow("Live Path Update", overlay_image)
+    return
+        
+
 
 def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles) -> list:
     """
@@ -129,52 +173,18 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     path = astar(costmap, dynamic_start, goal)
 
     # Convert the path to cm
-    path_cm = []
-    if path:
-        for row, col in path:
-            # Convert grid coordinates to pixel center
-            center_x_pixels = (col + 0.5) * block_width
-            center_y_pixels = (row + 0.5) * block_height
-
-            # Convert pixels to cm
-            center_x_cm = center_x_pixels * cm_per_pixel
-            center_y_cm = center_y_pixels * cm_per_pixel
-
-            # Append the point in cm
-            path_cm.append((center_x_cm, center_y_cm))
-
+    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
+    
     # Visualization using 'path' instead of 'path_cm'
-    overlay_image = frame.copy()
-    if path:
-        path_centers_pixels = []
-        for row, col in path:
-            # Calculate the center of the grid cell in pixels
-            center_x_pixels = int((col + 0.5) * block_width)
-            center_y_pixels = int((row + 0.5) * block_height)
-            path_centers_pixels.append((center_x_pixels, center_y_pixels))
-
-            # Draw the center point
-            cv2.circle(overlay_image, (center_x_pixels, center_y_pixels), 5, (0, 255, 0), -1)
-
-        # Draw lines connecting the centers
-        for i in range(len(path_centers_pixels) - 1):
-            cv2.line(
-                overlay_image,
-                path_centers_pixels[i],
-                path_centers_pixels[i + 1],
-                (0, 0, 255),
-                2,
-            )
-
-    # Show the updated frame
-    cv2.imshow("Live Path Update", overlay_image)
-
+    overlay_image = path_visualization(frame, path, block_width, block_height)
     # Return the path in cm
     return path_cm
 
 
-def main(start):
-    cap = cv2.VideoCapture(0)  # Use 0 for the default camera
+def init(cap, start):
+    """
+    Initialize the system, select a goal, compute the shortest path, and visualize the result.
+    """
     if not cap.isOpened():
         print("Error: Could not open video stream.")
         return
@@ -186,6 +196,8 @@ def main(start):
         return
 
     frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Get grid dimensions from the user
     try:
         height_division = int(input("Enter the number of rows (N): "))
         width_division = int(input("Enter the number of columns (M): "))
@@ -193,33 +205,35 @@ def main(start):
         print("Invalid input! Please enter integers.")
         return
 
+    # Create costmap and compute scaling factors
     costmap, block_height, block_width = create_costmap(frame_gray, height_division, width_division)
-
-    # Simplified cm_per_pixel calculation
     image_height, image_width = frame_gray.shape
     cm_per_pixel_height = 40 / image_height  # 40 cm is the real-world height
     cm_per_pixel_width = 80 / image_width   # 80 cm is the real-world width
     cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
 
-    # Select start and goal points
+    # Select the goal point
     display_image = frame.copy()
-    cv2.imshow("Select  Goal", display_image)
-    cv2.setMouseCallback("Select  Goal", select_points, display_image)
-    print("Click 1 points: Goal.")
+    cv2.imshow("Select Start and Goal", display_image)
+    cv2.setMouseCallback("Select Goal", select_points, display_image)
+    print("Click one points:  Goal.")
     cv2.waitKey(0)
 
     if len(points) < 1:
-        print("Please select two points!")
+        print("Please select one points!")
         cap.release()
         cv2.destroyAllWindows()
         return
 
     # Map points to grid
-    goal = (
+    start = (
         points[0][0] * height_division // frame_gray.shape[0],
         points[0][1] * width_division // frame_gray.shape[1],
     )
-
+    goal = (
+        points[1][0] * height_division // frame_gray.shape[0],
+        points[1][1] * width_division // frame_gray.shape[1],
+    )
 
  
     while cap.isOpened():
@@ -238,5 +252,5 @@ def main(start):
     cv2.destroyAllWindows()
 
 
-if __name__ == "__main__":
-    main()
+    return path_cm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
+
