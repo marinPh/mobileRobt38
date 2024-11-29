@@ -33,12 +33,12 @@ class Thymio:
 
         self.L = 46.75  # mm - demi-distance entre les 2 roues
         self.Ts = 0.38
-        self.K_rotation = self.L / (4 * self.Ts)
-        self.K_translation = 1 / (4 * self.Ts)
+        self.K_rotation = self.L / (8 * self.Ts)
+        self.K_translation = 1 / (8 * self.Ts)
 
         self.W = np.diag([40, 40, 0.1, 40, 40, 0.1])
         self.V_c = np.diag([0.1, 0.1, 0.01, 100, 75.72])
-        self.V_nc = np.diag([0.0001, 40, 40])  # Wheels
+        self.V_nc = 40  # Wheels
         self.A = np.array(
             [
                 [1, 0, 0, self.Ts, 0, 0],
@@ -49,7 +49,28 @@ class Thymio:
                 [0, 0, 0, 0, 0, 1],
             ]
         )
+        self.C_trans = np.array([[0, 1]])
+
         return None
+
+    def Rotation_theta(self, theta):
+        return np.array(
+            [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
+        )
+
+    def P_1_vers_0(self, theta):
+        R_theta = self.Rotation_theta(theta)
+        return np.block(
+            [
+                [R_theta, np.zeros((2, 4))],
+                [0, 0, 1, 0, 0, 0],
+                [np.zeros((2, 3)), R_theta, np.zeros((2, 1))],
+                [np.zeros((1, 6))],
+            ]
+        )
+
+    def P_0_vers_1(self, theta):
+        return self.P_1_vers_0(theta).T
 
     def g_c(self, z):
         theta = z[2]
@@ -64,14 +85,7 @@ class Thymio:
         return np.array(s_c)
 
     def g_nc(self, z):
-        theta = z[2]
-        s_nc = [
-            theta,
-            z[3] * np.cos(theta)
-            + z[4] * np.sin(theta),  # x_dot*cos(theta) + y_dot*sin(theta)
-            self.L * z[5],
-        ]  # L*theta_dot
-        return np.array(s_nc)
+        return self.C_trans @ z
 
     def grad_g_c(self, z):
         theta = z[2]
@@ -93,21 +107,7 @@ class Thymio:
         return np.array(grad)
 
     def grad_g_nc(self, z):
-        theta = z[2]
-        x_dot, y_dot = z[3], z[4]
-        grad = [
-            [0, 0, 1, 0, 0, 0],
-            [
-                0,
-                0,
-                -x_dot * np.sin(theta) + y_dot * np.cos(theta),
-                np.cos(theta),
-                np.sin(theta),
-                0,
-            ],
-            [0, 0, 0, 0, 0, self.L],
-        ]
-        return np.array(grad)
+        return self.C_trans
 
     def constructing_s(
         self,
@@ -118,15 +118,17 @@ class Thymio:
         y_measured=0,
         theta_measured=0,
     ):
-        s_nc = np.array(
-            [
-                theta_measured,
-                (V_left_measure + V_right_measure) / 2,
-                (V_left_measure - V_right_measure) / 2,
-            ]
-        )
+        s_nc = (V_left_measure + V_right_measure) / 2
         if camera_working:
-            s_c = np.append(np.array([x_measured, y_measured]), s_nc)
+            s_c = np.array(
+                [
+                    x_measured,
+                    y_measured,
+                    theta_measured,
+                    s_nc,
+                    (V_left_measure - V_right_measure) / 2,
+                ]
+            )
             return s_c
         return s_nc
 
@@ -167,8 +169,6 @@ class Thymio:
         theta_measured=0,
     ):
         ### Computing the variables that are dependant on the state of the camera
-        C_k = self.grad_g_c(z_k_k_1) if camera_working else self.grad_g_nc(z_k_k_1)
-        V = self.V_c if camera_working else self.V_nc
         s_k = self.constructing_s(
             V_left_measure,
             V_right_measure,
@@ -177,12 +177,61 @@ class Thymio:
             y_measured,
             theta_measured,
         )
-        g_k = self.g_c(z_k_k_1) if camera_working else self.g_nc(z_k_k_1)
+        C_k = self.grad_g_c(z_k_k_1) if camera_working else self.grad_g_nc(z_k_k_1)
+        V = self.V_c if camera_working else self.V_nc
+        # Changing the computation of the filter based on the state of the camera
+        if camera_working:
+            g_k = self.g_c(z_k_k_1)
+            ### The filtering step that can be rewritten without any problem
+            L_k_k = sigma_k_k_1 @ C_k.T @ np.linalg.inv(C_k @ sigma_k_k_1 @ C_k.T + V)
+            sigma_k_k = sigma_k_k_1 - L_k_k @ C_k @ sigma_k_k_1
+            z_k_k = z_k_k_1 + L_k_k @ (s_k - g_k)
 
-        ### The real filtering step that can be rewritten without any problem
-        L_k_k = sigma_k_k_1 @ C_k.T @ np.linalg.inv(C_k @ sigma_k_k_1 @ C_k.T + V)
-        sigma_k_k = sigma_k_k_1 - L_k_k @ C_k @ sigma_k_k_1
-        z_k_k = z_k_k_1 + L_k_k @ (s_k - g_k)
+        else:
+            ### Changing the frame of coordinates
+            theta = z_k_k_1[2]
+            z_1_k_k_1 = self.P_1_vers_0(theta) @ z_k_k_1
+            sigma_1_k_k_1 = (
+                self.P_1_vers_0(theta) @ sigma_k_k_1 @ self.P_0_vers_1(theta)
+            )
+
+            ### Creating a reduced state vector and covariance matrix
+            z_1_red_k_k_1 = np.array([z_1_k_k_1[0], z_1_k_k_1[3]])  # x1  & x1_dot
+            sigma_1_red_k_k_1 = np.array(
+                [
+                    [sigma_1_k_k_1[0, 0], sigma_1_k_k_1[0, 3]],
+                    [sigma_1_k_k_1[3, 0], sigma_1_k_k_1[3, 3]],
+                ]
+            )
+
+            g_k = self.g_nc(z_1_red_k_k_1)
+
+            ### The filtering step can be computed for the reduced system
+            L_red_k_k = (
+                sigma_1_red_k_k_1
+                @ C_k.T
+                @ np.linalg.inv(C_k @ sigma_1_red_k_k_1 @ C_k.T + V)
+            )
+            sigma_1_red_k_k = sigma_1_red_k_k_1 - L_red_k_k @ C_k @ sigma_1_red_k_k_1
+            z_1_red_k_k = z_1_red_k_k_1 + L_red_k_k @ (s_k - g_k)
+
+            ### Putting back the reduced vector into the main one as well as the covariance matrix
+            z_1_k_k = z_1_k_k_1
+            z_1_k_k[0], z_1_k_k[3] = z_1_red_k_k[0], z_1_red_k_k[1]
+
+            sigma_1_k_k = sigma_1_k_k_1
+            sigma_1_k_k[0, 0], sigma_1_k_k[0, 3] = (
+                sigma_1_red_k_k[0, 0],
+                sigma_1_red_k_k[0, 1],
+            )
+            sigma_1_k_k[3, 0], sigma_1_k_k[3, 3] = (
+                sigma_1_red_k_k[1, 0],
+                sigma_1_red_k_k[1, 1],
+            )
+
+            ### Going back to the original frame
+            z_k_k = self.P_0_vers_1(theta) @ z_1_k_k
+            sigma_k_k = self.P_0_vers_1(theta) @ sigma_1_k_k @ self.P_1_vers_0(theta)
 
         return z_k_k, sigma_k_k
 
@@ -269,7 +318,7 @@ class Thymio:
         )  # mm
 
         u = self.K_translation * (x1_b - x1_estimate)  # en mm/s
-        u = u / self.speedConversion  # en unité Thymio
+        u = u / self.speedConversion
         if u > 225:
             u = 225
         left_motor_target = u  # en unité Thymio
@@ -279,7 +328,7 @@ class Thymio:
     def rotation_control(self, theta_estimate, xb, yb):
         theta_b = np.arctan2(yb, xb)  # en rad
         u = self.K_rotation * (theta_b - theta_estimate)  # en mm/s
-        u = u / self.speedConversion  # en unité Thymio
+        u = u / self.speedConversion
         if u > 225:
             u = 225
         left_motor_target = u  # en unité Thymio
