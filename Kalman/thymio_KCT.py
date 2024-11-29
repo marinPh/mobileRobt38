@@ -197,7 +197,12 @@ class Thymio:
 
             ### Creating a reduced state vector and covariance matrix
             z_1_red_k_k_1 = np.array([z_1_k_k_1[0], z_1_k_k_1[3]])  # x1  & x1_dot
-            sigma_1_red_k_k_1 = np.diag([sigma_1_k_k_1[0, 0], sigma_1_k_k_1[3, 3]])
+            sigma_1_red_k_k_1 = np.array(
+                [
+                    [sigma_1_k_k_1[0, 0], sigma_1_k_k_1[0, 3]],
+                    [sigma_1_k_k_1[3, 0], sigma_1_k_k_1[3, 3]],
+                ]
+            )
 
             g_k = self.g_nc(z_1_red_k_k_1)
 
@@ -215,8 +220,12 @@ class Thymio:
             z_1_k_k[0], z_1_k_k[3] = z_1_red_k_k[0], z_1_red_k_k[1]
 
             sigma_1_k_k = sigma_1_k_k_1
-            sigma_1_k_k[0, 0], sigma_1_k_k[3, 3] = (
+            sigma_1_k_k[0, 0], sigma_1_k_k[0, 3] = (
                 sigma_1_red_k_k[0, 0],
+                sigma_1_red_k_k[0, 1],
+            )
+            sigma_1_k_k[3, 0], sigma_1_k_k[3, 3] = (
+                sigma_1_red_k_k[1, 0],
                 sigma_1_red_k_k[1, 1],
             )
 
