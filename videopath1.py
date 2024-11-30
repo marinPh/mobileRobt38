@@ -47,6 +47,9 @@ def create_costmap(image, grid_rows, grid_cols):
             else:
                 costmap[i, j] = 1  # Obstacle
 
+    print(f"The costmap shape is: {costmap.shape}")
+
+
     # Scale the costmap back to the original image resolution
     costmap_binary_image = np.kron(costmap, np.ones((block_height, block_width), dtype=np.uint8)) * 255
 
