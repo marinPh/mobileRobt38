@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from heapq import heappush, heappop
+import matplotlib.pyplot as plt
 
 # Mouse callback to get points
 points = []
@@ -67,6 +68,8 @@ def astar(costmap, start, goal):
         x, y = node
         for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             nx, ny = x + dx, y + dy
+            print(costmap.shape)
+            plt.imsave(costmap)
             if 0 <= nx < rows and 0 <= ny < cols and costmap[nx, ny] == 0:
                 yield (nx, ny)
 

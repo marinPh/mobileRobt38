@@ -53,7 +53,7 @@ def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
     this_aruco_parameters = cv2.aruco.DetectorParameters_create()
 
     # Start the video stream
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     # Set resolution
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # Set the width
@@ -75,6 +75,7 @@ def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
         ret, frame = cap.read()
 
         # Resize the frame to avoid cropping wrong aspect ratio
+        print(frame.shape,end='\r')
         frame = cv2.resize(frame, (1280, 720))
 
         # Detect ArUco markers in the video frame
