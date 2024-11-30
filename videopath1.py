@@ -35,7 +35,7 @@ def create_costmap(image, grid_rows, grid_cols):
     """
     Discretize the image into a costmap and save it as a binary image.
     """
-    _, binary_image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
+    _, binary_image = cv2.threshold(image, 100, 255, cv2.THRESH_BINARY)
     height, width = image.shape
     block_height = height // grid_rows
     block_width = width // grid_cols
