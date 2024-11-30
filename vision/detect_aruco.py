@@ -200,7 +200,10 @@ def main(channel: queue.Queue):
                 (0, 255, 0),
                 2,
             )
-
+            
+            #on my frame I want to fill the marker with white
+            cv2.fillPoly(normCopy, [square_corners.astype(int)], (255,255,255))
+            
             # Display the resulting frame
             query = (True,normCopy, normalized_image, scaled_pos5)
             try:
