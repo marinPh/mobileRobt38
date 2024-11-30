@@ -36,7 +36,7 @@ ARUCO_DICT = {
 }
 
 
-def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
+def main(channel: queue.Queue):
     """
     Main method of the program.
     """
@@ -189,6 +189,8 @@ def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
             )
 
             # Draw Tag #5 Position on Frame
+            
+            normCopy = normalized_image.copy()
             cv2.putText(
                 normalized_image,
                 f"(X: {int(scaled_pos5[0])}, Y: {int(scaled_pos5[1])}, YAW: {int(scaled_pos5[2])})",
@@ -200,10 +202,10 @@ def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
             )
 
             # Display the resulting frame
+            query = (True,normCopy, normalized_image, scaled_pos5)
             try:
-                qreturn.put(True,timeout=0.1)
-                qimg.put(normalized_image,timeout=0.1)
-                qpos.put(scaled_pos5)
+                channel.put(query,timeout=0.1)
+                
                 
             except queue.Full:
                 continue
@@ -215,10 +217,10 @@ def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
         else: 
+            query = (False,frame,frame, (0,0,0))
             try:
-                qreturn.put(False,timeout=0.1)
-                qimg.put(frame,timeout=0.1)
-                qpos.put((0,0,0),timeout=0.1)
+                channel.put(query,timeout=0.1)
+
             except queue.Full:
                 continue
 
