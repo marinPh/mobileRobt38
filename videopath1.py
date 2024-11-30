@@ -28,9 +28,12 @@ def select_points(event, x, y, flags, param):
 import cv2
 import numpy as np
 
+import cv2
+import numpy as np
+
 def create_costmap(image, grid_rows, grid_cols):
     """
-    Discretize the image into a costmap and visualize it as a binary image.
+    Discretize the image into a costmap and save it as a binary image.
     """
     _, binary_image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
     height, width = image.shape
@@ -49,16 +52,17 @@ def create_costmap(image, grid_rows, grid_cols):
 
     print(f"The costmap shape is: {costmap.shape}")
 
+    
 
-    # Scale the costmap back to the original image resolution
-    costmap_binary_image = np.kron(costmap, np.ones((block_height, block_width), dtype=np.uint8)) * 255
+    # Save the binary image and costmap visualization
+    cv2.imwrite("binary_image.png", binary_image)
+    cv2.imwrite("normalized_image",image)
 
-    # Display the costmap as a binary image
-    cv2.imshow("Costmap Binary Image", costmap_binary_image)
-    cv2.waitKey(0)  # Wait for a key press to close the window
-    cv2.destroyAllWindows()
+    print("Binary image saved as 'binary_image.png'.")
+    print("Costmap visualization saved as 'costmap_visualization.png'.")
 
     return costmap, block_height, block_width
+
 
 def heuristic(a, b):
     """
