@@ -25,9 +25,12 @@ def select_points(event, x, y, flags, param):
             cv2.destroyWindow("Select Start and Goal")
 
 
+import cv2
+import numpy as np
+
 def create_costmap(image, grid_rows, grid_cols):
     """
-    Discretize the image into a costmap.
+    Discretize the image into a costmap and visualize it as a binary image.
     """
     _, binary_image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
     height, width = image.shape
@@ -38,13 +41,21 @@ def create_costmap(image, grid_rows, grid_cols):
     for i in range(grid_rows):
         for j in range(grid_cols):
             block = binary_image[i * block_height : (i + 1) * block_height,
-                          j * block_width : (j + 1) * block_width]
+                                 j * block_width : (j + 1) * block_width]
             if np.mean(block) > 127:  # Assume white is walkable (mean > 127)
                 costmap[i, j] = 0  # Walkable
             else:
                 costmap[i, j] = 1  # Obstacle
-    return costmap, block_height, block_width
 
+    # Scale the costmap back to the original image resolution
+    costmap_binary_image = np.kron(costmap, np.ones((block_height, block_width), dtype=np.uint8)) * 255
+
+    # Display the costmap as a binary image
+    cv2.imshow("Costmap Binary Image", costmap_binary_image)
+    cv2.waitKey(0)  # Wait for a key press to close the window
+    cv2.destroyAllWindows()
+
+    return costmap, block_height, block_width
 
 def heuristic(a, b):
     """
