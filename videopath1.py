@@ -56,7 +56,7 @@ def create_costmap(image, grid_rows, grid_cols):
 
     # Save the binary image and costmap visualization
     cv2.imwrite("binary_image.png", binary_image)
-    cv2.imwrite("normalized_image",image)
+    cv2.imwrite("normalized_image.png",image)
 
     print("Binary image saved as 'binary_image.png'.")
     print("Costmap visualization saved as 'costmap_visualization.png'.")
