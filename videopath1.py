@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from heapq import heappush, heappop
+import matplotlib.pyplot as plt
 
 # Mouse callback to get points
 points = []
@@ -24,11 +25,17 @@ def select_points(event, x, y, flags, param):
             cv2.destroyWindow("Select Start and Goal")
 
 
+import cv2
+import numpy as np
+
+import cv2
+import numpy as np
+
 def create_costmap(image, grid_rows, grid_cols):
     """
-    Discretize the image into a costmap.
+    Discretize the image into a costmap and save it as a binary image.
     """
-    _, binary_image = cv2.threshold(image, 200, 255, cv2.THRESH_BINARY)
+    _, binary_image = cv2.threshold(image, 100, 255, cv2.THRESH_BINARY)
     height, width = image.shape
     block_height = height // grid_rows
     block_width = width // grid_cols
@@ -37,11 +44,23 @@ def create_costmap(image, grid_rows, grid_cols):
     for i in range(grid_rows):
         for j in range(grid_cols):
             block = binary_image[i * block_height : (i + 1) * block_height,
-                          j * block_width : (j + 1) * block_width]
+                                 j * block_width : (j + 1) * block_width]
             if np.mean(block) > 127:  # Assume white is walkable (mean > 127)
                 costmap[i, j] = 0  # Walkable
             else:
                 costmap[i, j] = 1  # Obstacle
+
+    print(f"The costmap shape is: {costmap.shape}")
+
+    
+
+    # Save the binary image and costmap visualization
+    cv2.imwrite("binary_image.png", binary_image)
+    cv2.imwrite("normalized_image.png",image)
+
+    print("Binary image saved as 'binary_image.png'.")
+    print("Costmap visualization saved as 'costmap_visualization.png'.")
+
     return costmap, block_height, block_width
 
 
@@ -51,10 +70,10 @@ def heuristic(a, b):
     """
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-
 def astar(costmap, start, goal):
     """
     A* algorithm for shortest path.
+    Saves the costmap at each step for debugging purposes.
     """
     rows, cols = costmap.shape
     open_set = []
@@ -63,6 +82,10 @@ def astar(costmap, start, goal):
     g_costs = {start: 0}
     explored = set()
 
+    def heuristic(a, b):
+        # Using Manhattan distance as heuristic
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
     def neighbors(node):
         x, y = node
         for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
@@ -70,9 +93,14 @@ def astar(costmap, start, goal):
             if 0 <= nx < rows and 0 <= ny < cols and costmap[nx, ny] == 0:
                 yield (nx, ny)
 
+    step = 0
     while open_set:
         _, current_g_cost, current_pos = heappop(open_set)
         explored.add(current_pos)
+
+        # Save the current costmap for debugging
+        plt.imsave(f'costmap_step_{step}.png', costmap, cmap='gray')
+        step += 1
 
         if current_pos == goal:
             path = []

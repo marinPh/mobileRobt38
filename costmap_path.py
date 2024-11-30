@@ -4,7 +4,7 @@ from heapq import heappush, heappop
 
 # GLOBAL VARIABLES ============================================
 # Load the image
-image_path = r"C:/Users/neilc/OneDrive/Bureau/Exercises_mobile/mobileRobt38/grid2.jpeg"
+image_path = r"C:/Users/neilc/OneDrive/Bureau/Exercises_mobile/mobileRobt38/table2.jpeg"
 print(f"Loading image from: {image_path}")
 original_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
@@ -38,7 +38,7 @@ def create_costmap(image, grid_rows, grid_cols):
     """
     Discretize the binary image into a costmap.
     """
-    _, binary_image = cv2.threshold(image, 200, 255, cv2.THRESH_BINARY)
+    _, binary_image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
     height, width = image.shape
     block_height = height // grid_rows
     block_width = width // grid_cols
@@ -47,12 +47,30 @@ def create_costmap(image, grid_rows, grid_cols):
     for i in range(grid_rows):
         for j in range(grid_cols):
             block = binary_image[i * block_height: (i + 1) * block_height,
-                          j * block_width: (j + 1) * block_width]
+                                 j * block_width: (j + 1) * block_width]
             if np.mean(block) > 127:  # Check for walkable region (white)
                 costmap[i, j] = 0  # Walkable
             else:
                 costmap[i, j] = 1  # Obstacle
     return costmap, block_height, block_width
+
+
+def reconstruct_binary_image_from_costmap(costmap, block_height, block_width, image_shape):
+    """
+    Reconstruct a binary image from the costmap for visualization.
+    """
+    rows, cols = costmap.shape
+    reconstructed_image = np.zeros(image_shape, dtype=np.uint8)
+
+    for i in range(rows):
+        for j in range(cols):
+            value = 255 if costmap[i, j] == 0 else 0  # 255 for walkable, 0 for obstacles
+            reconstructed_image[
+                i * block_height : (i + 1) * block_height,
+                j * block_width : (j + 1) * block_width,
+            ] = value
+
+    return reconstructed_image
 
 
 def heuristic(a, b):
@@ -107,26 +125,6 @@ def update(costmap, block_height, block_width, start, goal, display_image, obsta
     """
     Update the costmap with obstacles and compute the shortest path.
     """
-    # Convert obstacles from (distance, angle) to grid coordinates
-    robot_y, robot_x = start  # Start is in grid coordinates
-    for distance_cm, angle_deg in obstacles:
-        # Convert distance to pixels
-        distance_pixels = distance_cm / cm_per_pixel
-
-        # Calculate obstacle position in pixels
-        angle_rad = np.radians(angle_deg)
-        obstacle_x_pixels = robot_x * block_width + distance_pixels * np.cos(angle_rad)
-        obstacle_y_pixels = robot_y * block_height + distance_pixels * np.sin(angle_rad)
-
-        # Convert to grid coordinates
-        obstacle_x_grid = int(obstacle_x_pixels // block_width)
-        obstacle_y_grid = int(obstacle_y_pixels // block_height)
-
-        # Mark obstacle on the costmap if within bounds
-        if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
-            costmap[obstacle_y_grid, obstacle_x_grid] = 1  # Mark as obstacle
-
-    # Calculate the shortest path using A*
     path = astar(costmap, start, goal)
 
     # Draw path on the original image
@@ -166,8 +164,6 @@ def main():
     except ValueError:
         print("Invalid input! Please enter integers.")
         return
-
-    
 
     # Display the original image for both start and goal selection
     display_image = cv2.cvtColor(original_image, cv2.COLOR_GRAY2BGR)
@@ -211,6 +207,10 @@ def main():
         print("Path found (in grid coordinates):", path)
     else:
         print("No path found!")
+
+    # Reconstruct and display the binary image from the costmap
+    reconstructed_image = reconstruct_binary_image_from_costmap(updated_costmap, block_height, block_width, original_image.shape)
+    cv2.imshow("Reconstructed Binary Image from Costmap", reconstructed_image)
 
     # Wait for 'q' to close all windows
     print("Press 'q' to close all windows.")
