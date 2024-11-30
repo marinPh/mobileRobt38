@@ -52,10 +52,10 @@ def heuristic(a, b):
     """
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-
 def astar(costmap, start, goal):
     """
     A* algorithm for shortest path.
+    Saves the costmap at each step for debugging purposes.
     """
     rows, cols = costmap.shape
     open_set = []
@@ -64,18 +64,25 @@ def astar(costmap, start, goal):
     g_costs = {start: 0}
     explored = set()
 
+    def heuristic(a, b):
+        # Using Manhattan distance as heuristic
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
     def neighbors(node):
         x, y = node
         for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             nx, ny = x + dx, y + dy
-            print(costmap.shape)
-            plt.imsave(costmap)
             if 0 <= nx < rows and 0 <= ny < cols and costmap[nx, ny] == 0:
                 yield (nx, ny)
 
+    step = 0
     while open_set:
         _, current_g_cost, current_pos = heappop(open_set)
         explored.add(current_pos)
+
+        # Save the current costmap for debugging
+        plt.imsave(f'costmap_step_{step}.png', costmap, cmap='gray')
+        step += 1
 
         if current_pos == goal:
             path = []

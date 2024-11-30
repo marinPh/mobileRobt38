@@ -75,7 +75,7 @@ def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
         ret, frame = cap.read()
 
         # Resize the frame to avoid cropping wrong aspect ratio
-        print(frame.shape,end='\r')
+        #print(frame.shape,end='\r')
         frame = cv2.resize(frame, (1280, 720))
 
         # Detect ArUco markers in the video frame
@@ -152,8 +152,8 @@ def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
             output_corners = np.array([[0,0],[1280,0],[1280,720],[0,720]]).astype(np.float32)
 
             # Compute the perspective transform matrix
-            print(square_corners.shape, output_corners.shape, end="\r")
-            print(square_corners, output_corners, end="\r")
+            #print(square_corners.shape, output_corners.shape, end="\r")
+            #print(square_corners, output_corners, end="\r")
             matrix = cv2.getPerspectiveTransform(square_corners, output_corners)
 
             # Apply the perspective warp
@@ -168,14 +168,14 @@ def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
             real_height = 1750  # mm  --> REMEASURE, I DIDNT HAVE RULER
 
             if width <= 0 or height <= 0:
-                print("Error: Negative Width or Height", tag1, tag2, tag3, tag4,width,height, end="\r")
+                #print("Error: Negative Width or Height", tag1, tag2, tag3, tag4,width,height, end="\r")
                 continue
 
             x_scale = real_width / width
             y_scale = real_height / height
 
             # Computing #5 Yaw
-            print(corner5A, corner5B, end="\r")
+            #print(corner5A, corner5B, end="\r")
             dx = corner5A[0] - corner5B[0]
             dy = corner5A[1] - corner5B[1]
             yaw5 = (-1.0)*math.atan2(dx, dy)
