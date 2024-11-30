@@ -177,8 +177,8 @@ def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
             print(corner5A, corner5B, end="\r")
             dx = corner5A[0] - corner5B[0]
             dy = corner5A[1] - corner5B[1]
-            yaw5 = math.atan2(dx, dy)
-            yaw5 = math.degrees(yaw5)
+            yaw5 = (-1.0)*math.atan2(dx, dy)
+            
 
             # Compute Tag #5's Position
             scaled_pos5 = (
