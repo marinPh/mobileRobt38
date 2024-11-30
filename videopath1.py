@@ -91,7 +91,7 @@ def astar(costmap, start, goal):
         explored.add(current_pos)
 
         # Save the current costmap for debugging
-        plt.imsave(f'costmap_step_{step}.png', costmap, cmap='gray')
+        #plt.imsave(f'costmap_step_{step}.png', costmap, cmap='gray')
         step += 1
 
         if current_pos == goal:
