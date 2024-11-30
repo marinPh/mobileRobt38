@@ -157,47 +157,7 @@ def path_visualization(frame, path, block_width, block_height):
         
 
 
-def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles):
-    """
-    Update the costmap with obstacles, compute the shortest path, and return the path in cm.
-    """
-    # Convert start coordinates
-    robot_y = start[0] // block_height
-    robot_x = start[1] // block_width
 
-    for distance_cm, angle_deg in obstacles:
-        # Adjust the obstacle angle by adding the robot's angle
-        global_angle_deg = angle_deg + start[2]  # start[2] is the robot's angle1
-        global_angle_rad = np.radians(global_angle_deg)
-
-        # Convert distance to pixels
-        distance_pixels = distance_cm / cm_per_pixel
-
-        # Calculate obstacle position in pixels
-        obstacle_x_pixels = robot_x * block_width + distance_pixels * np.cos(global_angle_rad)
-        obstacle_y_pixels = robot_y * block_height + distance_pixels * np.sin(global_angle_rad)
-
-        # Convert to grid coordinates
-        obstacle_x_grid = int(obstacle_x_pixels // block_width)
-        obstacle_y_grid = int(obstacle_y_pixels // block_height)
-
-        # Mark obstacle on the costmap if within bounds
-        if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
-            costmap[obstacle_y_grid, obstacle_x_grid] = 1  # Mark as obstacle
-
-    # Dynamically update the start position based on the robot's position
-    dynamic_start = (robot_y, robot_x)
-
-    # Calculate the shortest path using A*
-    path = astar(costmap, dynamic_start, goal)
-
-    # Convert the path to cm
-    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
-    
-    # Visualization using 'path' instead of 'path_cm'
-    overlay_image = path_visualization(frame, path, block_width, block_height)
-    # Return the path in cm
-    return path_cm
 
 
 def init(frame, start):
@@ -266,7 +226,52 @@ def init(frame, start):
     # Visualize the path on the frame
     path_visualization(frame, path, block_width, block_height)
 
+    print(path)
+
     return path_cm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
+
+def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles):
+    """
+    Update the costmap with obstacles, compute the shortest path, and return the path in cm.
+    """
+    # Convert start coordinates
+    robot_y = start[0] // block_height
+    robot_x = start[1] // block_width
+
+    for distance_cm, angle_deg in obstacles:
+        # Adjust the obstacle angle by adding the robot's angle
+        global_angle_deg = angle_deg + start[2]  # start[2] is the robot's angle1
+        global_angle_rad = np.radians(global_angle_deg)
+
+        # Convert distance to pixels
+        distance_pixels = distance_cm / cm_per_pixel
+
+        # Calculate obstacle position in pixels
+        obstacle_x_pixels = robot_x * block_width + distance_pixels * np.cos(global_angle_rad)
+        obstacle_y_pixels = robot_y * block_height + distance_pixels * np.sin(global_angle_rad)
+
+        # Convert to grid coordinates
+        obstacle_x_grid = int(obstacle_x_pixels // block_width)
+        obstacle_y_grid = int(obstacle_y_pixels // block_height)
+
+        # Mark obstacle on the costmap if within bounds
+        if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
+            costmap[obstacle_y_grid, obstacle_x_grid] = 1  # Mark as obstacle
+
+    # Dynamically update the start position based on the robot's position
+    dynamic_start = (robot_y, robot_x)
+
+    # Calculate the shortest path using A*
+    path = astar(costmap, dynamic_start, goal)
+
+    # Convert the path to cm
+    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
+    
+    # Visualization using 'path' instead of 'path_cm'
+    overlay_image = path_visualization(frame, path, block_width, block_height)
+    # Return the path in cm
+    print(path)
+    return path_cm
 
 
 
