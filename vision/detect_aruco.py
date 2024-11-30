@@ -36,7 +36,7 @@ ARUCO_DICT = {
 }
 
 
-def main(qpos: queue.Queue, qimg: queue.Queue):
+def main(qpos: queue.Queue, qimg: queue.Queue, qreturn: queue.Queue):
     """
     Main method of the program.
     """
@@ -83,8 +83,9 @@ def main(qpos: queue.Queue, qimg: queue.Queue):
         )
 
         # Check that at least one ArUco marker was detected
-        if len(corners) > 0:
-            print("[INFO] ArUco marker(s) detected", len(corners), print(ids), end="\r")
+        
+        if len(corners) == 5:
+            #print("[INFO] ArUco marker(s) detected", len(corners), print(ids), end="\r")
             # Flatten the ArUco IDs list
             ids = ids.flatten()
 
@@ -144,34 +145,36 @@ def main(qpos: queue.Queue, qimg: queue.Queue):
             # for now we do a taccone!
 
             # Collect all corners of the square formed by ArUco markers
-            #       square_corners = np.array([tag1,tag2,tag3,tag4])
+            square_corners = np.array([tag1,tag2,tag3,tag4]).astype(np.float32)
 
             # Define output corners
-            #       output_corners = np.array([[0,0],[1280,0],[1280,720],[0,720]])
+            output_corners = np.array([[0,0],[1280,0],[1280,720],[0,720]]).astype(np.float32)
 
             # Compute the perspective transform matrix
-            #       matrix = cv2.getPerspectiveTransform(square_corners, output_corners)
+            print(square_corners.shape, output_corners.shape, end="\r")
+            print(square_corners, output_corners, end="\r")
+            matrix = cv2.getPerspectiveTransform(square_corners, output_corners)
 
             # Apply the perspective warp
-            #       normalized_image = cv2.warpPerspective(frame, matrix, (1280, 720))
+            normalized_image = cv2.warpPerspective(frame, matrix, (1280, 720))
 
             ## COMPUTE (X,Y,YAW) OF TAG #5 --------------------------------------------
             # Scaling map to mm
             width = tag2[0] - tag1[0]
             height = tag3[1] - tag2[1]
 
-            real_width = 812  # mm  --> REMEASURE, I DIDNT HAVE RULER
-            real_height = 433  # mm  --> REMEASURE, I DIDNT HAVE RULER
+            real_width = 770  # mm  --> REMEASURE, I DIDNT HAVE RULER
+            real_height = 1750  # mm  --> REMEASURE, I DIDNT HAVE RULER
 
-            if width >= 0 or height >= 0:
-                print("No map detected", tag1, tag2, tag3, tag4)
-                cv2.imshow("frame", frame)
+            if width <= 0 or height <= 0:
+                print("Error: Negative Width or Height", tag1, tag2, tag3, tag4,width,height, end="\r")
                 continue
 
             x_scale = real_width / width
             y_scale = real_height / height
 
             # Computing #5 Yaw
+            print(corner5A, corner5B, end="\r")
             dx = corner5A[0] - corner5B[0]
             dy = corner5A[1] - corner5B[1]
             yaw5 = math.atan2(dx, dy)
@@ -186,7 +189,7 @@ def main(qpos: queue.Queue, qimg: queue.Queue):
 
             # Draw Tag #5 Position on Frame
             cv2.putText(
-                frame,
+                normalized_image,
                 f"(X: {int(scaled_pos5[0])}, Y: {int(scaled_pos5[1])}, YAW: {int(scaled_pos5[2])})",
                 (pos5[0], pos5[1] - 50),
                 cv2.FONT_HERSHEY_SIMPLEX,
@@ -196,15 +199,34 @@ def main(qpos: queue.Queue, qimg: queue.Queue):
             )
 
             # Display the resulting frame
-            qimg.put(frame)
-            qpos.put(scaled_pos5)
+            try:
+                qreturn.put(True,timeout=0.1)
+                qimg.put(normalized_image,timeout=0.1)
+                qpos.put(scaled_pos5)
+                
+            except queue.Full:
+                continue
+                
 
-            cv2.imshow("frame", frame)
 
             # If "q" is pressed on the keyboard,
             # exit this loop
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+        else: 
+            try:
+                qreturn.put(False,timeout=0.1)
+                qimg.put(frame,timeout=0.1)
+                qpos.put((0,0,0),timeout=0.1)
+            except queue.Full:
+                continue
+
+            # If "q" is pressed on the keyboard,
+            # exit this loop
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+            
+           
 
     # Close down the video stream
     cap.release()
