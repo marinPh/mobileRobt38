@@ -15,7 +15,7 @@ class Thymio:
     def __init__(self, l=50, coneMargin=0.1):
         self.client = ClientAsync()
         self.node = None
-        self.ratio = 5 / (4003 - 1455)
+        self.ratio = (5-1) / (4003 - 1455)
         self.coneMargin = coneMargin
         # orderThymio = real_speed/speedConversion
         self.speedConversion = 0.797829 / 2.7

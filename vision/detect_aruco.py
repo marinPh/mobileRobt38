@@ -31,7 +31,7 @@ ARUCO_DICT = {
     "DICT_ARUCO_ORIGINAL": cv2.aruco.DICT_ARUCO_ORIGINAL,
 }
 
-def main(channel: queue.Queue):
+def main(channel: queue.Queue,stop:queue.Queue):
     with open('./vision/camera_calibration.json', 'r') as file:
         params = json.load(file)
     
@@ -61,7 +61,7 @@ def main(channel: queue.Queue):
     square_corners = []
     tag_positions = {1: (0, 0), 2: (0, 0), 3: (0, 0), 4: (0, 0)}
 
-    while True:
+    while True and stop.empty():
         ret, frame = cap.read()
         if not ret:
             print("Error: Unable to capture video")
