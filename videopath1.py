@@ -43,13 +43,20 @@ def create_costmap(image, grid_rows, grid_cols):
 
     print(f"The costmap shape is: {costmap.shape}")
 
-    # Save and display the binary image
-    cv2.imwrite("binary_image.png", binary_image)
-    print("Binary image saved as 'binary_image.png'.")
-    cv2.imshow("Binary Image", binary_image)
-    cv2.waitKey(1)  # Add a short delay to allow the image to render
+    # Recreate binary image from costmap
+    recreated_binary_image = np.zeros_like(binary_image)
+    for i in range(grid_rows):
+        for j in range(grid_cols):
+            block_value = 255 if costmap[i, j] == 0 else 0
+            recreated_binary_image[i * block_height : (i + 1) * block_height,
+                                   j * block_width : (j + 1) * block_width] = block_value
+
+    # Display the recreated binary image
+    cv2.imshow("Recreated Binary Image", recreated_binary_image)
+    cv2.waitKey(0)  # Wait for a key press to close the window
 
     return costmap, block_height, block_width
+
 
 
 
@@ -164,6 +171,7 @@ def init(frame, start):
     """
     Initialize the system, select a goal, compute the shortest path, and visualize the result.
     """
+    start = tuple(element / 10 for element in start)
     global points  # Ensure points can be accessed and modified
     points = []  # Clear any previous points
 
@@ -180,8 +188,8 @@ def init(frame, start):
     # Create costmap and compute scaling factors
     costmap, block_height, block_width = create_costmap(frame_gray, height_division, width_division)
     image_height, image_width = frame_gray.shape
-    cm_per_pixel_height = 59.5 / image_height  # 59.5 cm is the real-world height
-    cm_per_pixel_width = 84.1 / image_width    # 84.1 cm is the real-world width
+    cm_per_pixel_height = 80 / image_height  # 59.5 cm is the real-world height
+    cm_per_pixel_width = 150 / image_width    # 84.1 cm is the real-world width
     cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
 
     # Select the goal point
@@ -209,9 +217,11 @@ def init(frame, start):
 
     # Convert the start position to grid coordinates
     start_grid = (
-        start[1] * height_division // frame_gray.shape[0],  # y-coordinate
         start[0] * width_division // frame_gray.shape[1],  # x-coordinate
+        start[1] * height_division // frame_gray.shape[0],  # y-coordinate
     )
+    print(f"real and grid start: {start} {start_grid}")
+
 
     # Compute the shortest path using A*
     path = astar(costmap, start_grid, goal)
@@ -226,7 +236,14 @@ def init(frame, start):
     # Visualize the path on the frame
     path_visualization(frame, path, block_width, block_height)
 
-    print(path)
+    print("Path in cm:", path_cm)
+    print("Path in grid coordinates:", path)
+    print("Costmap:\n", costmap)
+    print(f"Block dimensions - Height: {block_height}, Width: {block_width}")
+    print("Start position (real-world coordinates):", start)
+    print("Goal position (grid coordinates):", goal)
+    print("Display image shape:", display_image.shape)
+    print(f"CM per pixel: {cm_per_pixel}")
 
     return path_cm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
 
