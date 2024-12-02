@@ -50,7 +50,6 @@ class Thymio:
             ]
         )
         self.C_trans = np.array([[0, 1]])
-        self.C_rot = np.array([[0, self.L]])
 
         return None
 
@@ -85,11 +84,8 @@ class Thymio:
         ]  # L*theta_dot
         return np.array(s_c)
 
-    def g_nc(self, z, translation_or_rotation):
-        if translation_or_rotation:
-            return self.C_trans @ z
-        else:
-            return self.C_rot @ z
+    def g_nc(self, z):
+        return self.C_trans @ z
 
     def grad_g_c(self, z):
         theta = z[2]
@@ -110,11 +106,8 @@ class Thymio:
         ]
         return np.array(grad)
 
-    def grad_g_nc(self, z, translation_or_rotation):
-        if translation_or_rotation:
-            return self.C_trans
-        else:
-            return self.C_rot
+    def grad_g_nc(self, z):
+        return self.C_trans
 
     def constructing_s(
         self,
@@ -124,23 +117,19 @@ class Thymio:
         x_measured=0,
         y_measured=0,
         theta_measured=0,
-        translation_or_rotation=True,
     ):
+        s_nc = (V_left_measure + V_right_measure) / 2
         if camera_working:
             s_c = np.array(
                 [
                     x_measured,
                     y_measured,
                     theta_measured,
-                    (V_left_measure + V_right_measure)/2 ,
+                    s_nc,
                     (V_left_measure - V_right_measure) / 2,
                 ]
             )
             return s_c
-        elif translation_or_rotation:
-            s_nc = (V_left_measure + V_right_measure) / 2
-        else:
-            s_nc = (V_left_measure - V_right_measure) / 2
         return s_nc
 
     def getObstaclePosition(self) -> list:
@@ -178,7 +167,6 @@ class Thymio:
         x_measured=0,
         y_measured=0,
         theta_measured=0,
-        translation_or_rotation=True,
     ):
         ### Computing the variables that are dependant on the state of the camera
         s_k = self.constructing_s(
@@ -188,13 +176,8 @@ class Thymio:
             x_measured,
             y_measured,
             theta_measured,
-            translation_or_rotation,
         )
-        C_k = (
-            self.grad_g_c(z_k_k_1)
-            if camera_working
-            else self.grad_g_nc(z_k_k_1, translation_or_rotation)
-        )
+        C_k = self.grad_g_c(z_k_k_1) if camera_working else self.grad_g_nc(z_k_k_1)
         V = self.V_c if camera_working else self.V_nc
         # Changing the computation of the filter based on the state of the camera
         if camera_working:
@@ -204,8 +187,7 @@ class Thymio:
             sigma_k_k = sigma_k_k_1 - L_k_k @ C_k @ sigma_k_k_1
             z_k_k = z_k_k_1 + L_k_k @ (s_k - g_k)
 
-        ### The thymio is translatign so only the translation is reconstructed
-        elif translation_or_rotation:
+        else:
             ### Changing the frame of coordinates
             theta = z_k_k_1[2]
             z_1_k_k_1 = self.P_1_vers_0(theta) @ z_k_k_1
@@ -222,7 +204,7 @@ class Thymio:
                 ]
             )
 
-            g_k = self.g_nc(z_1_red_k_k_1, translation_or_rotation)
+            g_k = self.g_nc(z_1_red_k_k_1)
 
             ### The filtering step can be computed for the reduced system
             L_red_k_k = (
@@ -251,35 +233,6 @@ class Thymio:
             z_k_k = self.P_0_vers_1(theta) @ z_1_k_k
             sigma_k_k = self.P_0_vers_1(theta) @ sigma_1_k_k @ self.P_1_vers_0(theta)
 
-        ### The thyimio is turning so only the rotation is recontructed
-        else:
-            ### Extracting theta and theta_dot
-            z_red_k_k_1 = np.array([z_k_k_1[2], z_k_k_1[5]])
-
-            sigma_red_k_k_1 = np.array(
-                [
-                    [sigma_k_k_1[2, 2], sigma_k_k_1[2, 5]],
-                    [sigma_k_k_1[5, 2], sigma_k_k_1[5, 5]],
-                ]
-            )
-
-            g_k = self.g_nc(z_red_k_k_1, translation_or_rotation)
-            ### The filtering step can be computed for the reduced system
-            L_red_k_k = (
-                sigma_red_k_k_1
-                @ C_k.T
-                @ np.linalg.inv(C_k @ sigma_red_k_k_1 @ C_k.T + V)
-            )
-            sigma_red_k_k = sigma_red_k_k_1 - L_red_k_k @ C_k @ sigma_red_k_k_1
-            z_red_k_k = z_red_k_k_1 + L_red_k_k @ (s_k - g_k)
-
-            z_k_k = z_k_k_1
-            z_k_k[2], z_k_k[5] = z_red_k_k[0], z_red_k_k[1]
-
-            sigma_k_k = sigma_k_k_1
-            sigma_k_k[2, 2], sigma_k_k[2, 5] = sigma_red_k_k[0, 0], sigma_red_k_k[0, 1]
-            sigma_k_k[5, 2], sigma_k_k[5, 5] = sigma_red_k_k[1, 0], sigma_red_k_k[1, 1]
-
         return z_k_k, sigma_k_k
 
     def prediction_step(self, z_k_k, sigma_k_k):
@@ -298,10 +251,6 @@ class Thymio:
         print(variables)
         aw(self.node.set_variables(variables))
         aw(self.client.sleep(0.1))
-
-    def get_multiple_variables(self, variables: list) -> dict:
-        self.wait_for_variables(variables)
-        return {variable: self.node.v[variable] for variable in variables}
 
     async def sleep(self, duration):
         await self.client.sleep(duration)
@@ -368,6 +317,8 @@ class Thymio:
         u = u / self.speedConversion
         if u > 225:
             u = 225
+        elif u < -225:
+            u = -225
         left_motor_target = u  # en unité Thymio
         right_motor_target = u  # en unité Thymio
         return left_motor_target, right_motor_target
@@ -378,6 +329,8 @@ class Thymio:
         u = u / self.speedConversion
         if u > 225:
             u = 225
+        elif u < -225:
+            u = -225
         left_motor_target = u  # en unité Thymio
         right_motor_target = -u  # en unité Thymio
         return left_motor_target, right_motor_target
@@ -388,17 +341,11 @@ class Thymio:
         theta_max, theta_min = self.get_cone_angles_waypoint(pos_estimate[:2], xb, yb)
         if self.robot_align_waypoint(current_pos[-1], theta_max, theta_min):
             left, right = self.translation_control(pos_estimate, xb, yb)
-            translation_or_rotation = True
-
         else:
             left, right = self.rotation_control(current_pos[-1], xb, yb)
-            translation_or_rotation = False
-
         self.set_multiple_variables(
             {"motor.left.target": [int(left)], "motor.right.target": [int(right)]}
         )
-
-        return translation_or_rotation
 
     def robot_close_waypoint(self, pos_estimate, xb, yb):
         """_summary_
