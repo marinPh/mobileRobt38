@@ -372,8 +372,12 @@ class Thymio:
         right_motor_target = u  # en unité Thymio
         return left_motor_target, right_motor_target
 
-    def rotation_control(self, theta_estimate, xb, yb):
-        theta_b = np.arctan2(yb, xb)  # en rad
+    def rotation_control(self, pos_estimate, xb, yb):
+        x_estimate = pos_estimate[0]  # mm
+        y_estimate = pos_estimate[1]  # mm
+        theta_estimate = pos_estimate[2]  # rad
+
+        theta_b = np.arctan2(yb-y_estimate, xb-x_estimate)  # en rad
         u = self.K_rotation * (theta_b - theta_estimate)  # en mm/s
         u = u / self.speedConversion
         if u > 225:
@@ -391,7 +395,7 @@ class Thymio:
             translation_or_rotation = True
 
         else:
-            left, right = self.rotation_control(current_pos[-1], xb, yb)
+            left, right = self.rotation_control(pos_estimate, xb, yb)
             translation_or_rotation = False
 
         self.set_multiple_variables(
