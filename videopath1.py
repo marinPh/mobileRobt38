@@ -265,7 +265,7 @@ def init(frame, start):
         print("No path found!")
         frame.release()
         cv2.destroyAllWindows()
-        return
+        return None
 
     # Convert the path to real-world coordinates (in cm)
     path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)

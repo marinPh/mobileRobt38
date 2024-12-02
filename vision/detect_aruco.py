@@ -11,6 +11,7 @@ import numpy as np  # Import Numpy library
 import math  # for arctan
 import sys  # Import sys library
 import queue
+import json
 
 desired_aruco_dictionary = "DICT_ARUCO_ORIGINAL"
 
@@ -36,10 +37,24 @@ ARUCO_DICT = {
 }
 
 
+
+
 def main(channel: queue.Queue):
+    
+    
     """
     Main method of the program.
     """
+    
+    with open('./vision/camera_calibration.json', 'r') as file:
+        params = json.load(file)
+    
+    camera_matrix = np.array(params["camera_matrix"], dtype=np.float32)
+    dist_coeffs = np.array(params["distortion_coefficients"], dtype=np.float32)
+    
+    
+    
+    
     # Check that we have a valid ArUco marker
     if ARUCO_DICT.get(desired_aruco_dictionary, None) is None:
         print("[INFO] ArUCo tag of '{}' is not supported".format(args["type"]))
@@ -73,6 +88,16 @@ def main(channel: queue.Queue):
         # Capture frame-by-frame
         # This method returns True/False as well as the video frame
         ret, frame = cap.read()
+        
+        h,  w = frame.shape[:2]
+        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, (w,h), 1, (w,h))
+
+        # undistort
+        dst = cv2.undistort(frame, camera_matrix, dist_coeffs, None, newcameramtx)
+
+        # crop the image
+        x, y, w, h = roi
+        dst = dst[y:y+h, x:x+w]
 
         # Resize the frame to avoid cropping wrong aspect ratio
         #print(frame.shape,end='\r')
@@ -121,6 +146,8 @@ def main(channel: queue.Queue):
 
                 ## DRAW BLUE OUTLINE AROUND MAP ---------------------------------------
                 # Note all 4 corners of the map
+                
+                print(marker_id, end="\r")
                 if marker_id == 1:
                     tag1 = top_right
                     pos1 = (center_x, center_y)
@@ -194,6 +221,7 @@ def main(channel: queue.Queue):
             cv2.putText(
                 normalized_image,
                 f"(X: {int(scaled_pos5[0])}, Y: {int(scaled_pos5[1])}, YAW: {int(scaled_pos5[2])})",
+                #magic number 50 is the offset from the center of the marker
                 (pos5[0], pos5[1] - 50),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -202,7 +230,7 @@ def main(channel: queue.Queue):
             )
             
             #on my frame I want to fill the marker 5 with white, corner5A and corner5B are the corners of the marker 5
-            marker5Square = np.array([corner5A,corner5B,(corner5A[0],corner5B[1]),(corner5B[0],corner5A[1])]).astype(np.int32)
+            marker5Square = np.array([corner5A,corner5B,(corner5B[0],corner5A[1]),(corner5A[0],corner5B[1])]).astype(np.int32)
             
             cv2.fillPoly(normCopy,[marker5Square],(255,255,255))
             
@@ -230,10 +258,6 @@ def main(channel: queue.Queue):
             except queue.Full:
                 continue
 
-            # If "q" is pressed on the keyboard,
-            # exit this loop
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
             
            
 
