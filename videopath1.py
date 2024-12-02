@@ -171,7 +171,7 @@ def init(frame, start):
     """
     Initialize the system, select a goal, compute the shortest path, and visualize the result.
     """
-    start = tuple(element / 10 for element in start)
+    #start = tuple(element / 10 for element in start)
     global points  # Ensure points can be accessed and modified
     points = []  # Clear any previous points
 
@@ -191,6 +191,10 @@ def init(frame, start):
     cm_per_pixel_height = 80 / image_height  # 59.5 cm is the real-world height
     cm_per_pixel_width = 150 / image_width    # 84.1 cm is the real-world width
     cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
+
+    mm_per_pixel_height = cm_per_pixel_height*10  
+    mm_per_pixel_width = cm_per_pixel_width*10   
+    mm_per_pixel = cm_per_pixel*10
 
     # Select the goal point
     display_image = frame.copy()
@@ -217,8 +221,9 @@ def init(frame, start):
 
     # Convert the start position to grid coordinates
     start_grid = (
-        start[0] * width_division // frame_gray.shape[1],  # x-coordinate
-        start[1] * height_division // frame_gray.shape[0],  # y-coordinate
+
+        start[1] *frame.shape[0]/800* height_division // frame_gray.shape[0],  # y-coordinate
+        start[0] * frame.shape[1]/1500* width_division // frame_gray.shape[1],  # x-coordinate
     )
     print(f"real and grid start: {start} {start_grid}")
 
@@ -302,7 +307,7 @@ def main():
 
     print("Press 'q' to quit.")
 
-    start = (100, 100, 0)  # Starting point (x, y, angle)
+    start = (170, 370, 0)  # Starting point (x, y, angle)
     initialized = False  # Track if the system has been initialized
     result = None  # Store the result of `init`
 
