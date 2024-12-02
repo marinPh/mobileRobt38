@@ -36,7 +36,16 @@ ARUCO_DICT = {
 }
 
 
-def main(channel: queue.Queue):
+def main(channel: queue.Queue,stop:queue.Queue):
+    with open('./vision/camera_calibration.json', 'r') as file:
+        params = json.load(file)
+    
+    camera_matrix = np.array(params["camera_matrix"], dtype=np.float32)
+    dist_coeffs = np.array(params["distortion_coefficients"], dtype=np.float32)
+
+    
+
+    
     """
     Main method of the program.
     """
@@ -68,10 +77,7 @@ def main(channel: queue.Queue):
     tag3 = (0, 0)  # in case none detected
     tag4 = (0, 0)  # in case none detected
 
-    while True:
-
-        # Capture frame-by-frame
-        # This method returns True/False as well as the video frame
+    while True and stop.empty():
         ret, frame = cap.read()
 
         # Resize the frame to avoid cropping wrong aspect ratio
