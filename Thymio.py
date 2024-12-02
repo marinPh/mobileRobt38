@@ -252,10 +252,6 @@ class Thymio:
         aw(self.node.set_variables(variables))
         aw(self.client.sleep(0.1))
 
-    def get_multiple_variables(self, variables: list) -> dict:
-        self.wait_for_variables(variables)
-        return {variable: self.node.v[variable] for variable in variables}
-
     async def sleep(self, duration):
         await self.client.sleep(duration)
 
