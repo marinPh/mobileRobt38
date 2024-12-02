@@ -317,6 +317,8 @@ class Thymio:
         u = u / self.speedConversion
         if u > 225:
             u = 225
+        elif u < -225:
+            u = -225
         left_motor_target = u  # en unité Thymio
         right_motor_target = u  # en unité Thymio
         return left_motor_target, right_motor_target
@@ -327,6 +329,8 @@ class Thymio:
         u = u / self.speedConversion
         if u > 225:
             u = 225
+        elif u < -225:
+            u = -225
         left_motor_target = u  # en unité Thymio
         right_motor_target = -u  # en unité Thymio
         return left_motor_target, right_motor_target
