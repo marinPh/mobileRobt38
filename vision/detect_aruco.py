@@ -11,6 +11,7 @@ import numpy as np  # Import Numpy library
 import math  # for arctan
 import sys  # Import sys library
 import queue
+import json
 
 desired_aruco_dictionary = "DICT_ARUCO_ORIGINAL"
 
