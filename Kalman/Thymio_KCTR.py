@@ -132,7 +132,7 @@ class Thymio:
                     x_measured,
                     y_measured,
                     theta_measured,
-                    s_nc,
+                    (V_left_measure + V_right_measure)/2 ,
                     (V_left_measure - V_right_measure) / 2,
                 ]
             )
