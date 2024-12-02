@@ -32,7 +32,14 @@ ARUCO_DICT = {
 }
 
 def main(channel: queue.Queue):
+    with open('./vision/camera_calibration.json', 'r') as file:
+        params = json.load(file)
     
+    camera_matrix = np.array(params["camera_matrix"], dtype=np.float32)
+    dist_coeffs = np.array(params["distortion_coefficients"], dtype=np.float32)
+
+    
+
     
     """
     Main method of the program.
@@ -61,6 +68,16 @@ def main(channel: queue.Queue):
             break
 
         frame = cv2.resize(frame, (1280, 720))
+
+        h,  w = frame.shape[:2]
+        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, (w,h), 1, (w,h))
+
+        # undistort
+        dst = cv2.undistort(frame, camera_matrix, dist_coeffs, None, newcameramtx)
+
+        # crop the image
+        x, y, w, h = roi
+        frame = dst[y:y+h, x:x+w]
 
         # Detect ArUco markers
         corners, ids, _ = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
