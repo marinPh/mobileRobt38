@@ -8,34 +8,25 @@ points = []
 
 def select_points(event, x, y, flags, param):
     """
-    Mouse callback function to capture clicks for selecting start and goal points.
+    Mouse callback function to capture clicks for selecting the goal point.
     """
     global points
-    if event == cv2.EVENT_LBUTTONDOWN:
-        print(f"Mouse clicked at: ({x}, {y})")  # Debug print
+    if event == cv2.EVENT_LBUTTONDOWN and len(points) < 1:  # Allow only one point
+        print(f"Goal point selected at: ({x}, {y})")  # Debug print
         points.append((y, x))  # Append (row, col) in grid terms
         # Display the click on the image
         temp_image = param.copy()
         cv2.circle(
             temp_image, (x, y), 5, (0, 0, 255), -1
         )  # Draw a red dot for the click
-        cv2.imshow("Select Start and Goal", temp_image)
-        # Close the window after two points are clicked
-        if len(points) == 2:
-            cv2.destroyWindow("Select Start and Goal")
+        cv2.imshow("Select Goal", temp_image)
 
-
-import cv2
-import numpy as np
-
-import cv2
-import numpy as np
 
 def create_costmap(image, grid_rows, grid_cols):
     """
-    Discretize the image into a costmap and save it as a binary image.
+    Discretize the image into a costmap and display the binary image.
     """
-    _, binary_image = cv2.threshold(image, 100, 255, cv2.THRESH_BINARY)
+    _, binary_image = cv2.threshold(image, 70, 255, cv2.THRESH_BINARY)
     height, width = image.shape
     block_height = height // grid_rows
     block_width = width // grid_cols
@@ -52,16 +43,21 @@ def create_costmap(image, grid_rows, grid_cols):
 
     print(f"The costmap shape is: {costmap.shape}")
 
-    
+    # Recreate binary image from costmap
+    recreated_binary_image = np.zeros_like(binary_image)
+    for i in range(grid_rows):
+        for j in range(grid_cols):
+            block_value = 255 if costmap[i, j] == 0 else 0
+            recreated_binary_image[i * block_height : (i + 1) * block_height,
+                                   j * block_width : (j + 1) * block_width] = block_value
 
-    # Save the binary image and costmap visualization
-    cv2.imwrite("binary_image.png", binary_image)
-    cv2.imwrite("normalized_image.png",image)
-
-    print("Binary image saved as 'binary_image.png'.")
-    print("Costmap visualization saved as 'costmap_visualization.png'.")
+    # Display the recreated binary image
+    cv2.imshow("Recreated Binary Image", recreated_binary_image)
+    cv2.waitKey(0)  # Wait for a key press to close the window
 
     return costmap, block_height, block_width
+
+
 
 
 def heuristic(a, b):
@@ -88,6 +84,8 @@ def astar(costmap, start, goal):
 
     def neighbors(node):
         x, y = node
+        x= int(x)
+        y = int(y)
         for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             nx, ny = x + dx, y + dy
             if 0 <= nx < rows and 0 <= ny < cols and costmap[nx, ny] == 0:
@@ -96,10 +94,11 @@ def astar(costmap, start, goal):
     step = 0
     while open_set:
         _, current_g_cost, current_pos = heappop(open_set)
+        
         explored.add(current_pos)
 
         # Save the current costmap for debugging
-        plt.imsave(f'costmap_step_{step}.png', costmap, cmap='gray')
+        #plt.imsave(f'costmap_step_{step}.png', costmap, cmap='gray')
         step += 1
 
         if current_pos == goal:
@@ -165,6 +164,89 @@ def path_visualization(frame, path, block_width, block_height):
         
 
 
+
+
+
+def init(frame, start):
+    """
+    Initialize the system, select a goal, compute the shortest path, and visualize the result.
+    """
+    start = tuple(element / 10 for element in start)
+    global points  # Ensure points can be accessed and modified
+    points = []  # Clear any previous points
+
+    frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Get grid dimensions from the user
+    try:
+        height_division = int(input("Enter the number of rows (N): "))
+        width_division = int(input("Enter the number of columns (M): "))
+    except ValueError:
+        print("Invalid input! Please enter integers.")
+        return
+
+    # Create costmap and compute scaling factors
+    costmap, block_height, block_width = create_costmap(frame_gray, height_division, width_division)
+    image_height, image_width = frame_gray.shape
+    cm_per_pixel_height = 80 / image_height  # 59.5 cm is the real-world height
+    cm_per_pixel_width = 150 / image_width    # 84.1 cm is the real-world width
+    cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
+
+    # Select the goal point
+    display_image = frame.copy()
+    cv2.imshow("Select Goal", display_image)
+    cv2.setMouseCallback("Select Goal", select_points, display_image)
+    print("Click to select the goal point.")
+
+    # Wait until the user selects the goal
+    while len(points) < 1:
+        cv2.waitKey(1)  # Allow time for mouse clicks
+
+    # Close the "Select Goal" window
+    cv2.destroyWindow("Select Goal")  # Moved here after goal selection
+
+    if len(points) < 1:
+        print("No goal point selected!")
+        return
+
+    # Convert the goal point to grid coordinates
+    goal = (
+        points[0][0] * height_division // frame_gray.shape[0],
+        points[0][1] * width_division // frame_gray.shape[1],
+    )
+
+    # Convert the start position to grid coordinates
+    start_grid = (
+        start[0] * width_division // frame_gray.shape[1],  # x-coordinate
+        start[1] * height_division // frame_gray.shape[0],  # y-coordinate
+    )
+    print(f"real and grid start: {start} {start_grid}")
+
+
+    # Compute the shortest path using A*
+    path = astar(costmap, start_grid, goal)
+
+    if not path:
+        print("No path found!")
+        return
+
+    # Convert the path to real-world coordinates (in cm)
+    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
+
+    # Visualize the path on the frame
+    path_visualization(frame, path, block_width, block_height)
+
+    print("Path in cm:", path_cm)
+    print("Path in grid coordinates:", path)
+    print("Costmap:\n", costmap)
+    print(f"Block dimensions - Height: {block_height}, Width: {block_width}")
+    print("Start position (real-world coordinates):", start)
+    print("Goal position (grid coordinates):", goal)
+    print("Display image shape:", display_image.shape)
+    print(f"CM per pixel: {cm_per_pixel}")
+
+    return path_cm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
+
 def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles):
     """
     Update the costmap with obstacles, compute the shortest path, and return the path in cm.
@@ -205,81 +287,89 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     # Visualization using 'path' instead of 'path_cm'
     overlay_image = path_visualization(frame, path, block_width, block_height)
     # Return the path in cm
+    print(path)
     return path_cm
 
 
-def init(frame, start):
-    """
-    Initialize the system, select a goal, compute the shortest path, and visualize the result.
-    """
-    
 
-    frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+def main():
+    # Initialize video capture
+    cap = cv2.VideoCapture(0)
 
-    # Get grid dimensions from the user
-    try:
-        height_division = int(input("Enter the number of rows (N): "))
-        width_division = int(input("Enter the number of columns (M): "))
-    except ValueError:
-        print("Invalid input! Please enter integers.")
+    if not cap.isOpened():
+        print("Error: Unable to access the camera.")
         return
 
-    # Create costmap and compute scaling factors
-    costmap, block_height, block_width = create_costmap(frame_gray, height_division, width_division)
-    image_height, image_width = frame_gray.shape
-    #FIXME: aren't we on a A1 paper? so the cm_per_pixel_width should be 59.5/image_width
-    cm_per_pixel_height = 59.5 / image_height  # 40 cm is the real-world height
-    cm_per_pixel_width = 84.1 / image_width   # 80 cm is the real-world width
-    cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
+    print("Press 'q' to quit.")
 
-    # Select the goal point
-    display_image = frame.copy()
-    cv2.imshow("Select Goal", display_image)
-    cv2.setMouseCallback("Select Goal", select_points, display_image)
-    print("Click to select the goal point.")
+    start = (100, 100, 0)  # Starting point (x, y, angle)
+    initialized = False  # Track if the system has been initialized
+    result = None  # Store the result of `init`
 
-    cv2.waitKey(0)  # Wait until the user selects the goal and the window closes
+    while True:
+        # Capture frame-by-frame
+        ret, frame = cap.read()
 
-    if len(points) < 1:
-        print("No goal point selected!")
-        frame.release()
-        cv2.destroyAllWindows()
-        return
+        if not ret:
+            print("Error: Unable to read frame from the camera.")
+            break
 
-    # Convert the goal point to grid coordinates
-    goal = (
-        points[0][0] * height_division // frame_gray.shape[0],
-        points[0][1] * width_division // frame_gray.shape[1],
-    )
+        if not initialized:
+            # Initialize the system with the first frame
+            print("Initializing pathfinding...")
+            try:
+                result = init(frame, start)
+                if result:
+                    (
+                        path_cm,
+                        path,
+                        costmap,
+                        block_height,
+                        block_width,
+                        start,
+                        goal,
+                        display_image,
+                        cm_per_pixel,
+                    ) = result
+                    print("Initialization complete. Path in cm:", path_cm)
+                    initialized = True
+            except Exception as e:
+                print(f"An error occurred during initialization: {e}")
+                break
+        else:
+            # Detect obstacles (example placeholder, replace with real logic)
+            obstacles = []  # Replace with your obstacle detection function
+            
+            if obstacles:  # Call update only if obstacles are detected
+                print("Obstacles detected, updating path...")
+                try:
+                    updated_path_cm = update(
+                        costmap,
+                        block_height,
+                        block_width,
+                        start,
+                        goal,
+                        frame,
+                        cm_per_pixel,
+                        obstacles,
+                    )
+                    print("Updated path in cm:", updated_path_cm)
+                except Exception as e:
+                    print(f"An error occurred during update: {e}")
+            else:
+                print("No obstacles detected, no update required.")
 
-    # Convert the start position to grid coordinates
-    start_grid = (
-        start[1] * height_division // frame_gray.shape[0],  # y-coordinate
-        start[0] * width_division // frame_gray.shape[1],  # x-coordinate
-    )
+        # Display the live video feed
+        #cv2.imshow("Live Video Feed", frame)
 
-    # Compute the shortest path using A*
-    path = astar(costmap, start_grid, goal)
+        # Check if the user wants to quit
+        key = cv2.waitKey(1) & 0xFF  # Use & 0xFF for compatibility
+        if key == ord('q'):  # Quit on pressing 'q'
+            print("Exiting...")
+            break
 
-    if not path:
-        print("No path found!")
-        frame.release()
-        cv2.destroyAllWindows()
-        return None
-
-    # Convert the path to real-world coordinates (in cm)
-    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
-
-    # Visualize the path on the frame
-    path_visualization(frame, path, block_width, block_height)
-
-    # Display the final path visualization
-    cv2.imshow("Final Path Visualization", frame)
-    cv2.waitKey(0)  # Wait for a key press to close the visualization
-
-    frame.release()
+    # Release the video capture and close all OpenCV windows
+    cap.release()
     cv2.destroyAllWindows()
-
-
-    return path_cm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
-
+if __name__ == "__main__":
+    main()
