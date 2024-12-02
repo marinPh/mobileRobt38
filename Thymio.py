@@ -36,8 +36,8 @@ class Thymio:
         self.K_rotation = self.L / (8 * self.Ts)
         self.K_translation = 1 / (8 * self.Ts)
 
-        self.W = np.diag([40, 40, 0.1, 40, 40, 0.1])
-        self.V_c = np.diag([0.1, 0.1, 0.01, 100, 75.72])
+        self.W = np.diag([0.1, 0.1, 0.01, 40, 40, 0.1])
+        self.V_c = np.diag([0.1, 0.1, 0.01, 40, 40])
         self.V_nc = 40  # Wheels
         self.A = np.array(
             [
