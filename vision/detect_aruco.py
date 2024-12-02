@@ -63,7 +63,7 @@ def main(channel: queue.Queue,stop:queue.Queue):
     this_aruco_parameters = cv2.aruco.DetectorParameters_create()
 
     # Start the video stream
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     # Set resolution
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # Set the width
@@ -84,6 +84,14 @@ def main(channel: queue.Queue,stop:queue.Queue):
         # Resize the frame to avoid cropping wrong aspect ratio
         #print(frame.shape,end='\r')
         frame = cv2.resize(frame, (1280, 720))
+        h,  w = frame.shape[:2]
+        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, (w,h), 1, (w,h))
+        # undistort
+        dst = cv2.undistort(frame, camera_matrix, dist_coeffs, None, newcameramtx)
+        # crop the image
+        x, y, w, h = roi
+        frame = dst[y:y+h, x:x+w]
+
 
         # Detect ArUco markers in the video frame
         (corners, ids, rejected) = cv2.aruco.detectMarkers(

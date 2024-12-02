@@ -298,6 +298,7 @@ class Thymio:
         print(variables)
         aw(self.node.set_variables(variables))
         aw(self.client.sleep(0.1))
+        
 
     def get_multiple_variables(self, variables: list) -> dict:
         self.wait_for_variables(variables)
@@ -398,11 +399,12 @@ class Thymio:
             left, right = self.rotation_control(pos_estimate, xb, yb)
             translation_or_rotation = False
 
+        
         self.set_multiple_variables(
             {"motor.left.target": [int(left)], "motor.right.target": [int(right)]}
         )
 
-        return translation_or_rotation
+        return translation_or_rotation, (theta_max, theta_min), (left, right)
 
     def robot_close_waypoint(self, pos_estimate, xb, yb):
         """_summary_
