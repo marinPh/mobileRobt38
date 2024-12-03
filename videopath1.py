@@ -282,7 +282,9 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
         # Mark obstacle on the costmap if within bounds
         if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
             plt.imsave("before_updated.png", costmap, cmap='gray')
-            costmap[obstacle_y_grid, obstacle_x_grid] = 1  # Mark as obstacle
+            
+            costmap[obstacle_y_grid, obstacle_x_grid] = 0  # Mark as obstacle
+            print(f"costmap[obstacle_y_grid, obstacle_x_grid]=: {costmap[obstacle_y_grid, obstacle_x_grid]} = {costmap[obstacle_y_grid, obstacle_x_grid]}")
             plt.imsave("costmap_updated.png", costmap, cmap='gray')
 
     # Dynamically update the start position based on the robot's position
@@ -299,6 +301,7 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     # Return the path in cm
     print(path)
     path_mm = [(x * 10, y * 10) for x, y in path_cm]
+    print("Updated path in mm:", path_mm)
     return path_mm, costmap
 
 
