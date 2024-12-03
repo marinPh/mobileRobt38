@@ -172,7 +172,7 @@ class Thymio:
                 pos.append((-1, 0))
             else:
                 detected = True
-                pos.append((distance, angle))
+                pos.append((distance/10, angle))
         return pos, detected
 
     def filtering_step(
