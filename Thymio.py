@@ -37,6 +37,8 @@ class Thymio:
         self.K_translation = 1 / (8 * self.Ts)
 
         self.W = np.diag([0.1, 0.1, 0.01, 40, 40, 0.1])
+        self.W_red_trans = np.diag([0.1,40])
+        self.W_red_rot = np.diag([0.01,0.1])
         self.V_c = np.diag([0.1, 0.1, 0.01, 40, 40])
         self.V_nc = 40  # Wheels
         self.A = np.array(
@@ -49,6 +51,11 @@ class Thymio:
                 [0, 0, 0, 0, 0, 1],
             ]
         )
+        self.A_red = np.array(
+            [[1, self.Ts],
+             [0,1]]
+        )
+
         self.C_trans = np.array([[0, 1]])
         self.C_rot = np.array([[0, self.L]])
 
@@ -237,7 +244,7 @@ class Thymio:
             z_1_k_k = z_1_k_k_1
             z_1_k_k[0], z_1_k_k[3] = z_1_red_k_k[0], z_1_red_k_k[1]
 
-            sigma_1_k_k = sigma_1_k_k_1
+            sigma_1_k_k = 0*sigma_1_k_k_1
             sigma_1_k_k[0, 0], sigma_1_k_k[0, 3] = (
                 sigma_1_red_k_k[0, 0],
                 sigma_1_red_k_k[0, 1],
@@ -276,15 +283,76 @@ class Thymio:
             z_k_k = z_k_k_1
             z_k_k[2], z_k_k[5] = z_red_k_k[0], z_red_k_k[1]
 
-            sigma_k_k = sigma_k_k_1
+            sigma_k_k = 0*sigma_k_k_1
             sigma_k_k[2, 2], sigma_k_k[2, 5] = sigma_red_k_k[0, 0], sigma_red_k_k[0, 1]
             sigma_k_k[5, 2], sigma_k_k[5, 5] = sigma_red_k_k[1, 0], sigma_red_k_k[1, 1]
 
         return z_k_k, sigma_k_k
 
-    def prediction_step(self, z_k_k, sigma_k_k):
-        z_k_1_k = self.A @ z_k_k
-        sigma_k_1_k = self.A @ sigma_k_k @ self.A.T + self.W
+    def prediction_step(self, z_k_k, sigma_k_k, camera_working=False, translation_or_rotation=True,):
+        if camera_working:
+            z_k_1_k = self.A @ z_k_k
+            sigma_k_1_k = self.A @ sigma_k_k @ self.A.T + self.W
+        elif translation_or_rotation:
+            ### Changing the frame of coordinates
+            theta = z_k_k[2]
+            z_1_k_k = self.P_1_vers_0(theta) @ z_k_k
+            sigma_1_k_k = (
+                self.P_1_vers_0(theta) @ sigma_k_k @ self.P_0_vers_1(theta)
+            )
+
+            ### Creating a reduced state vector and covariance matrix
+            z_1_red_k_k_1 = np.array([z_1_k_k[0], z_1_k_k[3]])  # x1  & x1_dot
+            sigma_1_red_k_k = np.array(
+                [
+                    [sigma_1_k_k[0, 0], sigma_1_k_k[0, 3]],
+                    [sigma_1_k_k[3, 0], sigma_1_k_k[3, 3]],
+                ]
+            )
+
+            # Updating the state
+            z_1_red_k_1_k = self.A_red @ z_1_red_k_k_1
+            sigma_1_red_k_1_k = self.A_red @ sigma_1_red_k_k @ self.A_red.T + self.W_red_trans
+
+            ### Putting back the reduced vector into the main one as well as the covariance matrix
+            z_1_k_1_k = z_1_k_k
+            z_1_k_1_k[0], z_1_k_1_k[3] = z_1_red_k_1_k[0], z_1_red_k_1_k[1]
+
+            sigma_1_k_1_k = 0*sigma_1_k_k
+            sigma_1_k_1_k[0, 0], sigma_1_k_1_k[0, 3] = (
+                sigma_1_red_k_1_k[0, 0],
+                sigma_1_red_k_1_k[0, 1],
+            )
+            sigma_1_k_1_k[3, 0], sigma_1_k_1_k[3, 3] = (
+                sigma_1_red_k_1_k[1, 0],
+                sigma_1_red_k_1_k[1, 1],
+            )
+
+            ### Going back to the original frame
+            z_k_1_k = self.P_0_vers_1(theta) @ z_1_k_1_k
+            sigma_k_1_k = self.P_0_vers_1(theta) @ sigma_1_k_1_k @ self.P_1_vers_0(theta)
+        else:
+            ### Extracting theta and theta_dot
+            z_red_k_k = np.array([z_k_k[2], z_k_k[5]])
+
+            sigma_red_k_k = np.array(
+                [
+                    [sigma_k_k[2, 2], sigma_k_k[2, 5]],
+                    [sigma_k_k[5, 2], sigma_k_k[5, 5]],
+                ]
+            )
+            
+            # Updating the state
+            z_red_k_1_k = self.A_red @ z_red_k_k
+            sigma_red_k_1_k = self.A_red @ sigma_red_k_k @ self.A_red.T + self.W_red_rot
+
+            z_k_1_k = z_k_k
+            z_k_1_k[2], z_k_1_k[5] = z_red_k_1_k[0], z_red_k_1_k[1]
+
+            sigma_k_1_k = 0*sigma_k_k
+            sigma_k_1_k[2, 2], sigma_k_1_k[2, 5] = sigma_red_k_1_k[0, 0], sigma_red_k_1_k[0, 1]
+            sigma_k_1_k[5, 2], sigma_k_1_k[5, 5] = sigma_red_k_1_k[1, 0], sigma_red_k_1_k[1, 1]
+
         return z_k_1_k, sigma_k_1_k
 
     async def lock_node(self):
