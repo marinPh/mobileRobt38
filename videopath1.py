@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from heapq import heappush, heappop
 import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
 
 # Mouse callback to get points
 points = []
@@ -26,37 +27,29 @@ def create_costmap(image, grid_rows, grid_cols):
     """
     Discretize the image into a costmap and display the binary image.
     """
+    # Threshold the image
     _, binary_image = cv2.threshold(image, 70, 255, cv2.THRESH_BINARY)
+    binary_image = gaussian_filter(binary_image, sigma=20)
+    plt.imshow(binary_image)
+
     height, width = image.shape
     block_height = height // grid_rows
     block_width = width // grid_cols
-    costmap = np.zeros((grid_rows, grid_cols), dtype=np.int8)
+    
+    reshaped = binary_image.reshape(grid_rows, block_height,  grid_cols, block_width)
+    averages = np.mean(reshaped, axis=(1, 3))
 
-    for i in range(grid_rows):
-        for j in range(grid_cols):
-            block = binary_image[i * block_height : (i + 1) * block_height,
-                                 j * block_width : (j + 1) * block_width]
-            if np.mean(block) > 127:  # Assume white is walkable (mean > 127)
-                costmap[i, j] = 0  # Walkable
-            else:
-                costmap[i, j] = 1  # Obstacle
+    # Generate the costmap based on the average threshold
+    costmap = np.where(averages > 200, 0, 1)
+    
+    recreated_binary_image = np.kron(
+        (1 - costmap).astype(np.uint8), np.ones((block_height, block_width), dtype=np.uint8)
+    ) * 255
+    
+    plt.imsave("costmap.png", recreated_binary_image, cmap='gray')
 
-    print(f"The costmap shape is: {costmap.shape}")
-
-    # Recreate binary image from costmap
-    recreated_binary_image = np.zeros_like(binary_image)
-    for i in range(grid_rows):
-        for j in range(grid_cols):
-            block_value = 255 if costmap[i, j] == 0 else 0
-            recreated_binary_image[i * block_height : (i + 1) * block_height,
-                                   j * block_width : (j + 1) * block_width] = block_value
-
-    # Display the recreated binary image
-    cv2.imshow("Recreated Binary Image", recreated_binary_image)
-    cv2.waitKey(0)  # Wait for a key press to close the window
 
     return costmap, block_height, block_width
-
 
 
 
@@ -188,8 +181,8 @@ def init(frame, start):
     # Create costmap and compute scaling factors
     costmap, block_height, block_width = create_costmap(frame_gray, height_division, width_division)
     image_height, image_width = frame_gray.shape
-    cm_per_pixel_height = 80 / image_height  # 59.5 cm is the real-world height
-    cm_per_pixel_width = 150 / image_width    # 84.1 cm is the real-world width
+    cm_per_pixel_height = 68.5 / image_height  # 59.5 cm is the real-world height
+    cm_per_pixel_width = 159.5 / image_width    # 84.1 cm is the real-world width
     cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
 
     mm_per_pixel_height = cm_per_pixel_height*10  
@@ -263,9 +256,13 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     # Convert start coordinates
     robot_y = start[0] // block_height
     robot_x = start[1] // block_width
+    
+    print (f"obstacles: {obstacles}")
 
     for distance_cm, angle_deg in obstacles:
         # Adjust the obstacle angle by adding the robot's angle
+        if distance_cm <=0:
+            continue
         global_angle_deg = angle_deg + start[2]  # start[2] is the robot's angle1
         global_angle_rad = np.radians(global_angle_deg)
 
@@ -279,10 +276,14 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
         # Convert to grid coordinates
         obstacle_x_grid = int(obstacle_x_pixels // block_width)
         obstacle_y_grid = int(obstacle_y_pixels // block_height)
+        
+        print(f"obstacle_x_grid: {obstacle_x_grid}, obstacle_y_grid: {obstacle_y_grid}")
 
         # Mark obstacle on the costmap if within bounds
         if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
+            plt.imsave("before_updated.png", costmap, cmap='gray')
             costmap[obstacle_y_grid, obstacle_x_grid] = 1  # Mark as obstacle
+            plt.imsave("costmap_updated.png", costmap, cmap='gray')
 
     # Dynamically update the start position based on the robot's position
     dynamic_start = (robot_y, robot_x)
