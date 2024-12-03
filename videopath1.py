@@ -227,6 +227,22 @@ def init(frame, start):
     if not path:
         print("No path found!")
         return
+    P = np.array(path)
+
+    # Compute differences between consecutive points
+    Pp = np.diff(P, axis=0)
+
+    # Compute delta (differences of Pp)
+    delta = np.diff(Pp, axis=0)
+
+    # Identify indices where delta equals 0 (indicating collinearity)
+    indices_to_remove = np.where((delta == 0).all(axis=1))[0] + 1
+
+    # Remove the intermediate points
+    P2 = np.delete(P, indices_to_remove, axis=0)
+    
+    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
+    path_mm = [(x * 10, y * 10) for x, y in path_cm]
 
     # Convert the path to real-world coordinates (in cm)
     path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
@@ -292,12 +308,28 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     path = astar(costmap, dynamic_start, goal)
 
     # Convert the path to cm
-    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
+    
     
     # Visualization using 'path' instead of 'path_cm'
     overlay_image = path_visualization(frame, path, block_width, block_height)
     # Return the path in cm
     print(path)
+    
+    P = np.array(path)
+
+    # Compute differences between consecutive points
+    Pp = np.diff(P, axis=0)
+
+    # Compute delta (differences of Pp)
+    delta = np.diff(Pp, axis=0)
+
+    # Identify indices where delta equals 0 (indicating collinearity)
+    indices_to_remove = np.where((delta == 0).all(axis=1))[0] + 1
+
+    # Remove the intermediate points
+    P2 = np.delete(P, indices_to_remove, axis=0)
+
+    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
     path_mm = [(x * 10, y * 10) for x, y in path_cm]
     return path_mm, costmap
 
