@@ -241,7 +241,9 @@ def init(frame, start):
     # Visualize the path on the frame
     path_visualization(frame, path, block_width, block_height)
 
-    path_mm = path_cm*10
+    print(f"path cm:{path_cm}")
+
+    path_mm = [(x * 10, y * 10) for x, y in path_cm]
 
     print("Path in mm:", path_mm)
     print("Path in grid coordinates:", path)
@@ -295,7 +297,7 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     overlay_image = path_visualization(frame, path, block_width, block_height)
     # Return the path in cm
     print(path)
-    path_mm = path_cm*10
+    path_mm = [(x * 10, y * 10) for x, y in path_cm]
     return path_mm, costmap
 
 
