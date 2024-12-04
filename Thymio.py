@@ -12,7 +12,7 @@ class Thymio:
         await self.node.lock()
         return None
 
-    def __init__(self, l=50, coneMargin=0.2):
+    def __init__(self, l=50, coneMargin=0.1):
         self.client = ClientAsync()
         self.node = None
         self.ratio = (5-1) / (4003 - 1455)

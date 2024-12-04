@@ -209,7 +209,7 @@ def main(params,cap:cv2.VideoCapture):
         
         #on my frame I want to fill the marker 5 with white, corner5A and corner5B are the corners of the marker 5
        # on my frame I want to fill the marker 5 with white, corner5A and corner5B are the corners of the marker 5
-        cv2.circle(normCopy, (int(pos5[0]),int(pos5[1])), 80, (255, 255, 255), -1)
+        cv2.circle(normCopy, corner5A, 80, (255, 255, 255), -1)
 
         
         # Display the resulting frame
