@@ -33,7 +33,11 @@ def create_costmap(image, grid_rows, grid_cols):
     """
     # Threshold the image
     _, binary_image = cv2.threshold(image, 70, 255, cv2.THRESH_BINARY)
-    binary_image = gaussian_filter(binary_image, sigma=20)
+    # Define the dilation kernel
+    kernel = np.ones((5, 5), np.uint8)
+
+    # Apply dilation
+    binary_image = cv2.erode(binary_image, kernel,iterations=8)
     plt.imshow(binary_image)
 
     height, width = image.shape
@@ -44,7 +48,7 @@ def create_costmap(image, grid_rows, grid_cols):
     averages = np.mean(reshaped, axis=(1, 3))
 
     # Generate the costmap based on the average threshold
-    costmap = np.where(averages > 200, 0, 1)
+    costmap = np.where(averages > 150, 0, 1)
     
     recreated_binary_image = np.kron(
         (1 - costmap).astype(np.uint8), np.ones((block_height, block_width), dtype=np.uint8)
@@ -122,7 +126,7 @@ def astar(costmap, start, goal):
 
 def path_pix_to_cm(path, block_width, block_height, cm_per_pixel):
     path_cm = []
-    if path:
+    if len(path) !=0:
         for row, col in path:
             # Convert grid coordinates to pixel center
             center_x_pixels = (col - 0.5) * block_width
@@ -138,7 +142,7 @@ def path_pix_to_cm(path, block_width, block_height, cm_per_pixel):
 
 def path_visualization(frame, path, block_width, block_height):
     overlay_image = frame.copy()
-    if path:
+    if len(path) !=0:
         path_centers_pixels = []
         for row, col in path:
             # Calculate the center of the grid cell in pixels
@@ -237,41 +241,27 @@ def init(frame, start):
     if not path:
         print("No path found!")
         return
-    P = np.array(path)
-
-    # Compute differences between consecutive points
-    Pp = np.diff(P, axis=0)
-
-    # Compute delta (differences of Pp)
-    delta = np.diff(Pp, axis=0)
-
-    # Identify indices where delta equals 0 (indicating collinearity)
-    indices_to_remove = np.where((delta == 0).all(axis=1))[0] + 1
-
-    # Remove the intermediate points
-    P2 = np.delete(P, indices_to_remove, axis=0)
+    P2 = np.array(path)
     
-    path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
-    path_mm1 = [(x * 10, y * 10) for x, y in path_cm]
+    print(f"long path: {path}")
+    # Simplify the path
+    P2 = simplify_path(P2)
+    print(f" simplified path: {P2}")
 
-    P = np.array(path_mm1)
-
-    # Compute differences between consecutive points
-    Pp = np.diff(P, axis=0)
-
-    # Compute delta (differences of Pp)
-    delta = np.diff(Pp, axis=0)
-
-    # Identify indices where delta equals 0 (indicating collinearity)
-    indices_to_remove = np.where((delta == 0).all(axis=1))[0] + 1
-
-    # Remove the intermediate points
-    path_mm = np.delete(P, indices_to_remove, axis=0)
+    
+    path_cm = path_pix_to_cm(P2, block_width, block_height, cm_per_pixel)
+    path_mm = [(x * 10, y * 10) for x, y in path_cm]
 
     
 
     # Visualize the path on the frame
     path_visualization(frame, path, block_width, block_height)
+    
+    # put the border of the costmap to 1
+    costmap[0,:] = 1
+    costmap[-1,:] = 1
+    costmap[:,0] = 1
+    costmap[:,-1] = 1
 
     print(f"simple path:{path_mm}")
 
@@ -284,8 +274,27 @@ def init(frame, start):
     print("Goal position (grid coordinates):", goal)
     print("Display image shape:", display_image.shape)
     print(f"CM per pixel: {cm_per_pixel}")
+    
+    
 
     return path_mm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel,rec
+
+
+def simplify_path(path):
+    
+    # Compute differences between consecutive points
+    Pp = np.diff(path, axis=0)
+
+    # Compute delta (differences of Pp)
+    delta = np.diff(Pp, axis=0)
+
+    # Identify indices where delta equals 0 (indicating collinearity)
+    indices_to_remove = np.where((delta == 0).all(axis=1))[0] + 1
+
+    # Remove the intermediate points
+    P2 = np.delete(path, indices_to_remove, axis=0)
+    P2 = P2[1:]
+    return P2
 
 def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles,lastPos):
     """
@@ -331,7 +340,7 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
         if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
             plt.imsave("before_updated.png", costmap, cmap='gray')
             #MATTHHHHH
-            b = 7
+            b = 3
             vect = np.array([np.cos(global_angle_rad),-np.sin(global_angle_rad)])
             z0 = np.array([obstacle_y_grid, obstacle_x_grid])
             extremo = (z0 + b*vect, z0 - b*vect)
@@ -366,33 +375,27 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     # Return the path in cm
     print(f"long path: {path}")
     
+    path = simplify_path(path)
+    print(f"simple path: {path}")
+    
+    
+    
 
     path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
     path_mm1 = [(x * 10, y * 10) for x, y in path_cm]
-    P = np.array(path_mm1)
+    path_mm = np.array(path_mm1)
 
-    # Compute differences between consecutive points
-    Pp = np.diff(P, axis=0)
-
-    # Compute delta (differences of Pp)
-    delta = np.diff(Pp, axis=0)
-
-    # Identify indices where delta equals 0 (indicating collinearity)
-    indices_to_remove = np.where((delta == 0).all(axis=1))[0] + 1
-
-    # Remove the intermediate points
-    path_mm = np.delete(P, indices_to_remove, axis=0)
     path_mm = [(x * 10, y * 10) for x, y in path_cm]
     print("Updated path in mm:", path_mm)
     overlay_image = path_visualization(frame, path, block_width, block_height)
     # Return the path in cm
     print(f"simple path: {path_mm}")
     
-    return path_mm, costmap
     recreated_binary_image = np.kron(
         (1 - costmap).astype(np.uint8), np.ones((block_height, block_width), dtype=np.uint8)
     ) * 255
     return path_mm, costmap, recreated_binary_image
+
 
 
 
