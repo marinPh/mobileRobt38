@@ -282,8 +282,8 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     Update the costmap with obstacles, compute the shortest path, and return the path in cm.
     """
     # Convert start coordinates
-    robot_y = start[0] // block_height
-    robot_x = start[1] // block_width
+    robot_x = (start[0]/(10*cm_per_pixel)) // block_width
+    robot_y = (start[1]/(10*cm_per_pixel)) // block_height
     
     print (f"obstacles: {obstacles}")
 
@@ -291,15 +291,15 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
         # Adjust the obstacle angle by adding the robot's angle
         if distance_cm <=0:
             continue
-        global_angle_deg = angle_deg + start[2]  # start[2] is the robot's angle1
-        global_angle_rad = np.radians(global_angle_deg)
+        global_angle_rad = np.radians(angle_deg) + start[2]  # start[2] is the robot's angle1
 
-        # Convert distance to pixels
-        distance_pixels = distance_cm / cm_per_pixel
+        # Calculate obstacle position in mm
+        obstacle_x_mm = start[0] + 10*distance_cm * np.cos(global_angle_rad)
+        obstacle_y_mm = start[1] + 10*distance_cm * np.sin(global_angle_rad)
 
         # Calculate obstacle position in pixels
-        obstacle_x_pixels = robot_x * block_width + distance_pixels * np.cos(global_angle_rad)
-        obstacle_y_pixels = robot_y * block_height + distance_pixels * np.sin(global_angle_rad)
+        obstacle_x_pixels = obstacle_x_mm/(10*cm_per_pixel)
+        obstacle_y_pixels = obstacle_y_mm/(10*cm_per_pixel)
 
         # Convert to grid coordinates
         obstacle_x_grid = int(obstacle_x_pixels // block_width)
