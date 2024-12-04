@@ -384,6 +384,11 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     path_mm = np.delete(P, indices_to_remove, axis=0)
     path_mm = [(x * 10, y * 10) for x, y in path_cm]
     print("Updated path in mm:", path_mm)
+    overlay_image = path_visualization(frame, path, block_width, block_height)
+    # Return the path in cm
+    print(f"path: {path}")
+    
+    return path_mm, costmap
     recreated_binary_image = np.kron(
         (1 - costmap).astype(np.uint8), np.ones((block_height, block_width), dtype=np.uint8)
     ) * 255
