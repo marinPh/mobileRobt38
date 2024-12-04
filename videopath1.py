@@ -233,7 +233,7 @@ def init(frame, start):
 
     # Compute the shortest path using A*
     path = astar(costmap, start_grid, goal)
-
+    
     if not path:
         print("No path found!")
         return
@@ -273,10 +273,10 @@ def init(frame, start):
     # Visualize the path on the frame
     path_visualization(frame, path, block_width, block_height)
 
-    print(f"path cm:{path_cm}")
+    print(f"simple path:{path_mm}")
 
 
-    print("Path in mm:", path_mm)
+    
     print("Path in grid coordinates:", path)
     print("Costmap:\n", costmap)
     print(f"Block dimensions - Height: {block_height}, Width: {block_width}")
@@ -364,7 +364,7 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     # Visualization using 'path' instead of 'path_cm'
     overlay_image = path_visualization(frame, path, block_width, block_height)
     # Return the path in cm
-    print(f"path: {path}")
+    print(f"long path: {path}")
     
 
     path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
@@ -386,7 +386,7 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     print("Updated path in mm:", path_mm)
     overlay_image = path_visualization(frame, path, block_width, block_height)
     # Return the path in cm
-    print(f"path: {path}")
+    print(f"simple path: {path_mm}")
     
     return path_mm, costmap
 
