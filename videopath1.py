@@ -53,7 +53,7 @@ def create_costmap(image, grid_rows, grid_cols):
     plt.imsave("costmap.png", recreated_binary_image, cmap='gray')
 
 
-    return costmap, block_height, block_width
+    return costmap, block_height, block_width, recreated_binary_image
 
 
 
@@ -125,8 +125,8 @@ def path_pix_to_cm(path, block_width, block_height, cm_per_pixel):
     if path:
         for row, col in path:
             # Convert grid coordinates to pixel center
-            center_x_pixels = (col + 0.5) * block_width
-            center_y_pixels = (row + 0.5) * block_height
+            center_x_pixels = (col - 0.5) * block_width
+            center_y_pixels = (row - 0.5) * block_height
 
             # Convert pixels to cm
             center_x_cm = center_x_pixels * cm_per_pixel
@@ -188,7 +188,7 @@ def init(frame, start):
         return
 
     # Create costmap and compute scaling factors
-    costmap, block_height, block_width = create_costmap(frame_gray, height_division, width_division)
+    costmap, block_height, block_width,rec = create_costmap(frame_gray, height_division, width_division)
     image_height, image_width = frame_gray.shape
     cm_per_pixel_height = (dims[0]/10) / image_height  # 59.5 cm is the real-world height
     cm_per_pixel_width = (dims[1]/10) / image_width    # 84.1 cm is the real-world width
@@ -285,7 +285,7 @@ def init(frame, start):
     print("Display image shape:", display_image.shape)
     print(f"CM per pixel: {cm_per_pixel}")
 
-    return path_mm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
+    return path_mm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel,rec
 
 def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles,lastPos):
     """
@@ -307,12 +307,12 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
         # Adjust the obstacle angle by adding the robot's angle
         if distance_cm <=0:
             continue
-        global_angle_rad = np.radians(angle_deg) + start[2]  # start[2] is the robot's angle1
+        global_angle_rad = np.radians(angle_deg) + lastPos[2]  # start[2] is the robot's angle1
 
         # Calculate obstacle position in mm
         
-        obstacle_x_mm = start[0] + 10*distance_cm * np.cos(global_angle_rad)
-        obstacle_y_mm = start[1] + 10*distance_cm * np.sin(global_angle_rad)
+        obstacle_x_mm = lastPos[0] + 5*distance_cm * np.cos(global_angle_rad)
+        obstacle_y_mm = lastPos[1] + 5*distance_cm * np.sin(global_angle_rad)
         
         print(f"{start[0]} + 10*{distance_cm} * np.cos({global_angle_rad})")
 
@@ -389,6 +389,10 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     print(f"simple path: {path_mm}")
     
     return path_mm, costmap
+    recreated_binary_image = np.kron(
+        (1 - costmap).astype(np.uint8), np.ones((block_height, block_width), dtype=np.uint8)
+    ) * 255
+    return path_mm, costmap, recreated_binary_image
 
 
 

@@ -168,11 +168,11 @@ class Thymio:
             prox = self.getProxH()
             angle = self.sensorAngles[list(self.sensorAngles.keys())[i]]
             distance = self.ratio * (4003 - list(prox)[i])
-            if distance > 5:
+            if distance > 2:
                 pos.append((-1, 0))
             else:
                 detected = True
-                pos.append((distance/10, angle))
+                pos.append((distance*10, angle))
         return pos, detected
 
     def filtering_step(

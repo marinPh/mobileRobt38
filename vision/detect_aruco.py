@@ -12,6 +12,7 @@ import math  # for arctan
 import sys  # Import sys library
 import queue
 import json
+import matplotlib.pyplot as plt
 
 desired_aruco_dictionary = "DICT_ARUCO_ORIGINAL"
 
@@ -75,6 +76,7 @@ def main(params,cap:cv2.VideoCapture):
     ret, frame = cap.read()
     # Resize the frame to avoid cropping wrong aspect ratio
     #print(frame.shape,end='\r')
+    plt.imshow(frame)
     frame = cv2.resize(frame, (1280, 720))
     h,  w = frame.shape[:2]
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, (w,h), 1, (w,h))
