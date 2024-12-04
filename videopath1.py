@@ -3,9 +3,13 @@ import numpy as np
 from heapq import heappush, heappop
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
+from bresenham import bresenham
 
 # Mouse callback to get points
 points = []
+
+
+dims = (685,1595)
 
 def select_points(event, x, y, flags, param):
     """
@@ -49,7 +53,7 @@ def create_costmap(image, grid_rows, grid_cols):
     plt.imsave("costmap.png", recreated_binary_image, cmap='gray')
 
 
-    return costmap, block_height, block_width
+    return costmap, block_height, block_width, recreated_binary_image
 
 
 
@@ -64,6 +68,7 @@ def astar(costmap, start, goal):
     A* algorithm for shortest path.
     Saves the costmap at each step for debugging purposes.
     """
+    print(f"start: {start}, goal: {goal}")
     rows, cols = costmap.shape
     open_set = []
     heappush(open_set, (0, 0, start))  # (f_cost, g_cost, position)
@@ -95,6 +100,7 @@ def astar(costmap, start, goal):
         step += 1
 
         if current_pos == goal:
+            print(f"Goal reached at {current_pos}!")
             path = []
             while current_pos in came_from:
                 path.append(current_pos)
@@ -104,12 +110,14 @@ def astar(costmap, start, goal):
 
         for neighbor in neighbors(current_pos):
             tentative_g_cost = g_costs[current_pos] + 1
+            print(f"neighbor: {neighbor}, tentative_g_cost: {tentative_g_cost}")
             if neighbor not in g_costs or tentative_g_cost < g_costs[neighbor]:
+                print(f"neighbor: {neighbor}, tentative_g_cost: {tentative_g_cost}")
                 came_from[neighbor] = current_pos
                 g_costs[neighbor] = tentative_g_cost
                 f_cost = tentative_g_cost + heuristic(neighbor, goal)
                 heappush(open_set, (f_cost, tentative_g_cost, neighbor))
-
+    print("No path found!")
     return []  # No path found
 
 def path_pix_to_cm(path, block_width, block_height, cm_per_pixel):
@@ -117,8 +125,8 @@ def path_pix_to_cm(path, block_width, block_height, cm_per_pixel):
     if path:
         for row, col in path:
             # Convert grid coordinates to pixel center
-            center_x_pixels = (col + 0.5) * block_width
-            center_y_pixels = (row + 0.5) * block_height
+            center_x_pixels = (col - 0.5) * block_width
+            center_y_pixels = (row - 0.5) * block_height
 
             # Convert pixels to cm
             center_x_cm = center_x_pixels * cm_per_pixel
@@ -169,6 +177,7 @@ def init(frame, start):
     points = []  # Clear any previous points
 
     frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
 
     # Get grid dimensions from the user
     try:
@@ -179,11 +188,13 @@ def init(frame, start):
         return
 
     # Create costmap and compute scaling factors
-    costmap, block_height, block_width = create_costmap(frame_gray, height_division, width_division)
+    costmap, block_height, block_width,rec = create_costmap(frame_gray, height_division, width_division)
     image_height, image_width = frame_gray.shape
-    cm_per_pixel_height = 68.5 / image_height  # 59.5 cm is the real-world height
-    cm_per_pixel_width = 159.5 / image_width    # 84.1 cm is the real-world width
+    cm_per_pixel_height = (dims[0]/10) / image_height  # 59.5 cm is the real-world height
+    cm_per_pixel_width = (dims[1]/10) / image_width    # 84.1 cm is the real-world width
     cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
+    print(f"gray shape: {frame_gray.shape}, dims: {dims}, cm_per_pixel: {cm_per_pixel}")
+    print (f" cm_per_pixel: {cm_per_pixel}, cm_per_pixel_height: {cm_per_pixel_height}, cm_per_pixel_width: {cm_per_pixel_width}")
 
     mm_per_pixel_height = cm_per_pixel_height*10  
     mm_per_pixel_width = cm_per_pixel_width*10   
@@ -214,16 +225,15 @@ def init(frame, start):
 
     # Convert the start position to grid coordinates
     start_grid = (
-
-        start[1] *frame.shape[0]/800* height_division // frame_gray.shape[0],  # y-coordinate
-        start[0] * frame.shape[1]/1500* width_division // frame_gray.shape[1],  # x-coordinate
+        start[1] *frame.shape[0]/dims[0]* height_division // frame_gray.shape[0],  # y-coordinate
+        start[0] * frame.shape[1]/dims[1]* width_division // frame_gray.shape[1],  # x-coordinate
     )
     print(f"real and grid start: {start} {start_grid}")
 
 
     # Compute the shortest path using A*
     path = astar(costmap, start_grid, goal)
-
+    
     if not path:
         print("No path found!")
         return
@@ -263,10 +273,10 @@ def init(frame, start):
     # Visualize the path on the frame
     path_visualization(frame, path, block_width, block_height)
 
-    print(f"path cm:{path_cm}")
+    print(f"simple path:{path_mm}")
 
 
-    print("Path in mm:", path_mm)
+    
     print("Path in grid coordinates:", path)
     print("Costmap:\n", costmap)
     print(f"Block dimensions - Height: {block_height}, Width: {block_width}")
@@ -275,15 +285,21 @@ def init(frame, start):
     print("Display image shape:", display_image.shape)
     print(f"CM per pixel: {cm_per_pixel}")
 
-    return path_mm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel
+    return path_mm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel,rec
 
-def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles):
+def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel, obstacles,lastPos):
     """
     Update the costmap with obstacles, compute the shortest path, and return the path in cm.
     """
     # Convert start coordinates
-    robot_x = (start[0]/(10*cm_per_pixel)) // block_width
-    robot_y = (start[1]/(10*cm_per_pixel)) // block_height
+    robot_x = int(((start[0]/(10*cm_per_pixel)))// (block_width))
+    robot_y = int(((start[1]/(10*cm_per_pixel)))// (block_height))
+    
+    
+
+    
+    print(f"start: {start}, robot_x: {robot_x}, robot_y: {robot_y}")
+    print(f"goals: {goal}, cm_per_pixel: {cm_per_pixel}")    
     
     print (f"obstacles: {obstacles}")
 
@@ -291,15 +307,19 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
         # Adjust the obstacle angle by adding the robot's angle
         if distance_cm <=0:
             continue
-        global_angle_rad = np.radians(angle_deg) + start[2]  # start[2] is the robot's angle1
+        global_angle_rad = np.radians(angle_deg) + lastPos[2]  # start[2] is the robot's angle1
 
         # Calculate obstacle position in mm
-        obstacle_x_mm = start[0] + 10*distance_cm * np.cos(global_angle_rad)
-        obstacle_y_mm = start[1] + 10*distance_cm * np.sin(global_angle_rad)
+        
+        obstacle_x_mm = lastPos[0] + 5*distance_cm * np.cos(global_angle_rad)
+        obstacle_y_mm = lastPos[1] + 5*distance_cm * np.sin(global_angle_rad)
+        
+        print(f"{start[0]} + 10*{distance_cm} * np.cos({global_angle_rad})")
 
         # Calculate obstacle position in pixels
         obstacle_x_pixels = obstacle_x_mm/(10*cm_per_pixel)
         obstacle_y_pixels = obstacle_y_mm/(10*cm_per_pixel)
+        print(f"obstacle_x_pixels: {obstacle_x_mm} / {cm_per_pixel*10} = {obstacle_x_pixels}")
 
         # Convert to grid coordinates
         obstacle_x_grid = int(obstacle_x_pixels // block_width)
@@ -310,16 +330,33 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
         # Mark obstacle on the costmap if within bounds
         if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
             plt.imsave("before_updated.png", costmap, cmap='gray')
-            
-            costmap[obstacle_y_grid, obstacle_x_grid] = 0  # Mark as obstacle
+            #MATTHHHHH
+            b = 7
+            vect = np.array([np.cos(global_angle_rad),-np.sin(global_angle_rad)])
+            z0 = np.array([obstacle_y_grid, obstacle_x_grid])
+            extremo = (z0 + b*vect, z0 - b*vect)
+            # Use Bresenham's line algorithm to find the points
+            line_points = list(bresenham(int(extremo[0][1]), int(extremo[0][0]), int(extremo[1][1]), int(extremo[1][0])))
+
+            # Set the corresponding grid cells to 1
+            for x, y in line_points:
+                if 0 <= y < costmap.shape[0] and 0 <= x < costmap.shape[1]:  # Ensure points are within bounds
+                    costmap[y, x] = 1  # Note: (y, x) because NumPy uses row-major order
+
+
             print(f"costmap[obstacle_y_grid, obstacle_x_grid]=: {costmap[obstacle_y_grid, obstacle_x_grid]} = {costmap[obstacle_y_grid, obstacle_x_grid]}")
+            print(f"robot_x: {robot_x}, robot_y: {robot_y}")
             plt.imsave("costmap_updated.png", costmap, cmap='gray')
+            
+    np.save("costmap.npy", costmap)
 
     # Dynamically update the start position based on the robot's position
-    dynamic_start = (robot_y, robot_x)
 
+    
+   
+    
     # Calculate the shortest path using A*
-    path = astar(costmap, dynamic_start, goal)
+    path = astar(costmap, (robot_y, robot_x), goal)
 
     # Convert the path to cm
     
@@ -327,7 +364,7 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     # Visualization using 'path' instead of 'path_cm'
     overlay_image = path_visualization(frame, path, block_width, block_height)
     # Return the path in cm
-    print(path)
+    print(f"long path: {path}")
     
 
     path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
@@ -347,7 +384,15 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     path_mm = np.delete(P, indices_to_remove, axis=0)
     path_mm = [(x * 10, y * 10) for x, y in path_cm]
     print("Updated path in mm:", path_mm)
+    overlay_image = path_visualization(frame, path, block_width, block_height)
+    # Return the path in cm
+    print(f"simple path: {path_mm}")
+    
     return path_mm, costmap
+    recreated_binary_image = np.kron(
+        (1 - costmap).astype(np.uint8), np.ones((block_height, block_width), dtype=np.uint8)
+    ) * 255
+    return path_mm, costmap, recreated_binary_image
 
 
 
