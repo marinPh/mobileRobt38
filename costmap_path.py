@@ -15,7 +15,6 @@ if original_image is None:
 # Global list to store user-selected points
 points = []
 
-
 def select_points(event, x, y, flags, param):
     """
     Mouse callback function to capture the start and goal points.

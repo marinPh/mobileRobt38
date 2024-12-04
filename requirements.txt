@@ -1,0 +1,8 @@
+numpy
+matplotlib
+opencv-python
+tdmclient
+bresenham
+scikit-image
+
+
