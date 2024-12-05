@@ -75,7 +75,6 @@ def main(params,cap:cv2.VideoCapture):
     
     ret, frame = cap.read()
     # Resize the frame to avoid cropping wrong aspect ratio
-    #print(frame.shape,end='\r')
     plt.imshow(frame)
     frame = cv2.resize(frame, (1280, 720))
     h,  w = frame.shape[:2]
@@ -92,7 +91,6 @@ def main(params,cap:cv2.VideoCapture):
     # Check that at least one ArUco marker was detected
     
     if len(corners) == 5:
-        #print("[INFO] ArUco marker(s) detected", len(corners), print(ids), end="\r")
         # Flatten the ArUco IDs list
         ids = ids.flatten()
         # Loop over the detected ArUco corners
@@ -119,26 +117,25 @@ def main(params,cap:cv2.VideoCapture):
             #        cv2.putText(frame, str(marker_id), (top_left[0], top_left[1] - 15),
             #                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             ## DRAW BLUE OUTLINE AROUND MAP ---------------------------------------
-            # Note all 4 corners of the map
-            #print(marker_id)
+         
             if marker_id == 1:
-                #print(marker_id)
+             
                 tag1 = top_right
                 pos1 = (center_x, center_y)
             if marker_id == 2:
-                #print(marker_id)
+                
                 tag2 = bottom_left
                 pos2 = (center_x, center_y)
             if marker_id == 3:
-                #print(marker_id)
+                
                 tag3 = bottom_left
                 pos3 = (center_x, center_y)
             if marker_id == 4:
-                #print(marker_id)
+                
                 tag4 = bottom_left
                 pos4 = (center_x, center_y)
             if marker_id == 5:
-                #print(marker_id)
+                
                 pos5 = (center_x, center_y)
                 corner5A = top_left
                 corner5B = bottom_left
@@ -148,15 +145,12 @@ def main(params,cap:cv2.VideoCapture):
         cv2.line(frame, tag3, tag4, (255, 0, 0), 2)
         cv2.line(frame, tag4, tag1, (255, 0, 0), 2)
         ## WARP PERSPECTIVE -------------------------------------------------------
-        # Not paid enough to do this properly
-        # for now we do a taccone!
         # Collect all corners of the square formed by ArUco markers
         square_corners = np.array([tag1,tag2,tag3,tag4]).astype(np.float32)
         # Define output corners
         output_corners = np.array([[0,0],[1280,0],[1280,720],[0,720]]).astype(np.float32)
         # Compute the perspective transform matrix
-        #print(square_corners.shape, output_corners.shape, end="\r")
-        #print(square_corners, output_corners, end="\r")
+    
         matrix = cv2.getPerspectiveTransform(square_corners, output_corners)
         # Apply the perspective warp
         normalized_image = cv2.warpPerspective(frame, matrix, (1280, 720))
@@ -166,7 +160,6 @@ def main(params,cap:cv2.VideoCapture):
         original_pixel_position = original_pixel_position.reshape(-1, 1, 2)
         # Use the perspective transformation to map the point
         pos5 = cv2.perspectiveTransform(original_pixel_position, matrix)
-        print(f"pos5: {pos5}, pos5 shape = {pos5.shape} ", end="/r")
         pos5 = pos5[0,0,:]
         
         ## COMPUTE (X,Y,YAW) OF TAG #5 --------------------------------------------
@@ -176,13 +169,12 @@ def main(params,cap:cv2.VideoCapture):
         real_width = 1595  # mm  --> REMEASURE, I DIDNT HAVE RULER
         real_height = 685 # mm  --> REMEASURE, I DIDNT HAVE RULER
         if width <= 0 or height <= 0:
-            #print("Error: Negative Width or Height", tag1, tag2, tag3, tag4,width,height, end="\r")
             return (False,frame,frame, (0,0,0))
            
         x_scale = real_width / width
         y_scale = real_height / height
             # Computing #5 Yaw
-        #print(corner5A, corner5B, end="\r")
+ 
         dx = corner5A[0] - corner5B[0]
         dy = corner5A[1] - corner5B[1]
         yaw5 = (-1.0)*math.atan2(dx, dy)
@@ -221,9 +213,3 @@ def main(params,cap:cv2.VideoCapture):
         query = (False,frame,frame, (0,0,0))
         return query
        
-            
-           
-
-    # Close down the video stream
-    cap.release()
-    cv2.destroyAllWindows()
