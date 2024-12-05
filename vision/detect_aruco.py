@@ -12,6 +12,7 @@ import math  # for arctan
 import sys  # Import sys library
 import queue
 import json
+import matplotlib.pyplot as plt
 
 desired_aruco_dictionary = "DICT_ARUCO_ORIGINAL"
 
@@ -54,8 +55,6 @@ def main(params,cap:cv2.VideoCapture):
         print("[INFO] ArUCo tag of '{}' is not supported".format(args["type"]))
         sys.exit(0)
 
-    # Load the ArUco dictionary
-    print("[INFO] detecting '{}' markers...".format(desired_aruco_dictionary))
     this_aruco_dictionary = cv2.aruco.Dictionary_get(
         ARUCO_DICT[desired_aruco_dictionary]
     )
@@ -77,6 +76,7 @@ def main(params,cap:cv2.VideoCapture):
     ret, frame = cap.read()
     # Resize the frame to avoid cropping wrong aspect ratio
     #print(frame.shape,end='\r')
+    plt.imshow(frame)
     frame = cv2.resize(frame, (1280, 720))
     h,  w = frame.shape[:2]
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, (w,h), 1, (w,h))
@@ -173,8 +173,8 @@ def main(params,cap:cv2.VideoCapture):
         # Scaling map to mm
         height, width = normalized_image.shape[::2]
        
-        real_width = 800  # mm  --> REMEASURE, I DIDNT HAVE RULER
-        real_height = 1500  # mm  --> REMEASURE, I DIDNT HAVE RULER
+        real_width = 1595  # mm  --> REMEASURE, I DIDNT HAVE RULER
+        real_height = 685 # mm  --> REMEASURE, I DIDNT HAVE RULER
         if width <= 0 or height <= 0:
             #print("Error: Negative Width or Height", tag1, tag2, tag3, tag4,width,height, end="\r")
             return (False,frame,frame, (0,0,0))
@@ -208,10 +208,9 @@ def main(params,cap:cv2.VideoCapture):
         )
         
         #on my frame I want to fill the marker 5 with white, corner5A and corner5B are the corners of the marker 5
-        marker5Square = np.array([corner5A,corner5B,(corner5A[0],corner5B[1]),(corner5B[0],corner5A[1])]).astype(np.int32)
-        
-        cv2.fillPoly(normCopy,[marker5Square],(255,255,255))
-        
+       # on my frame I want to fill the marker 5 with white, corner5A and corner5B are the corners of the marker 5
+        cv2.circle(normCopy, corner5A, 80, (255, 255, 255), -1)
+
         
         # Display the resulting frame
         query = (True,normCopy, normalized_image, scaled_pos5)
