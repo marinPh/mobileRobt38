@@ -17,7 +17,7 @@ def select_points(event, x, y, flags, param):
     """
     global points
     if event == cv2.EVENT_LBUTTONDOWN and len(points) < 1:  # Allow only one point
-        print(f"Goal point selected at: ({x}, {y})")  # Debug print
+        #print(f"Goal point selected at: ({x}, {y})")  # Debug print
         points.append((y, x))  # Append (row, col) in grid terms
         # Display the click on the image
         temp_image = param.copy()
@@ -68,7 +68,7 @@ def astar(costmap, start, goal):
     A* algorithm for shortest path.
     Saves the costmap at each step for debugging purposes.
     """
-    print(f"start: {start}, goal: {goal}")
+    #print(f"start: {start}, goal: {goal}")
     rows, cols = costmap.shape
     open_set = []
     heappush(open_set, (0, 0, start))  # (f_cost, g_cost, position)
@@ -110,9 +110,9 @@ def astar(costmap, start, goal):
 
         for neighbor in neighbors(current_pos):
             tentative_g_cost = g_costs[current_pos] + 1
-            print(f"neighbor: {neighbor}, tentative_g_cost: {tentative_g_cost}")
+            #print(f"neighbor: {neighbor}, tentative_g_cost: {tentative_g_cost}")
             if neighbor not in g_costs or tentative_g_cost < g_costs[neighbor]:
-                print(f"neighbor: {neighbor}, tentative_g_cost: {tentative_g_cost}")
+                #print(f"neighbor: {neighbor}, tentative_g_cost: {tentative_g_cost}")
                 came_from[neighbor] = current_pos
                 g_costs[neighbor] = tentative_g_cost
                 f_cost = tentative_g_cost + heuristic(neighbor, goal)
@@ -193,8 +193,8 @@ def init(frame, start):
     cm_per_pixel_height = (dims[0]/10) / image_height  # 59.5 cm is the real-world height
     cm_per_pixel_width = (dims[1]/10) / image_width    # 84.1 cm is the real-world width
     cm_per_pixel = (cm_per_pixel_height + cm_per_pixel_width) / 2
-    print(f"gray shape: {frame_gray.shape}, dims: {dims}, cm_per_pixel: {cm_per_pixel}")
-    print (f" cm_per_pixel: {cm_per_pixel}, cm_per_pixel_height: {cm_per_pixel_height}, cm_per_pixel_width: {cm_per_pixel_width}")
+    #print(f"gray shape: {frame_gray.shape}, dims: {dims}, cm_per_pixel: {cm_per_pixel}")
+    #print (f" cm_per_pixel: {cm_per_pixel}, cm_per_pixel_height: {cm_per_pixel_height}, cm_per_pixel_width: {cm_per_pixel_width}")
 
     mm_per_pixel_height = cm_per_pixel_height*10  
     mm_per_pixel_width = cm_per_pixel_width*10   
@@ -277,13 +277,13 @@ def init(frame, start):
 
 
     
-    print("Path in grid coordinates:", path)
-    print("Costmap:\n", costmap)
-    print(f"Block dimensions - Height: {block_height}, Width: {block_width}")
-    print("Start position (real-world coordinates):", start)
-    print("Goal position (grid coordinates):", goal)
-    print("Display image shape:", display_image.shape)
-    print(f"CM per pixel: {cm_per_pixel}")
+    #print("Path in grid coordinates:", path)
+    #print("Costmap:\n", costmap)
+    #print(f"Block dimensions - Height: {block_height}, Width: {block_width}")
+    #print("Start position (real-world coordinates):", start)
+    #print("Goal position (grid coordinates):", goal)
+    #print("Display image shape:", display_image.shape)
+    #print(f"CM per pixel: {cm_per_pixel}")
 
     return path_mm, path, costmap, block_height, block_width, start, goal, display_image, cm_per_pixel,rec
 
@@ -298,10 +298,10 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     
 
     
-    print(f"start: {start}, robot_x: {robot_x}, robot_y: {robot_y}")
-    print(f"goals: {goal}, cm_per_pixel: {cm_per_pixel}")    
+    #print(f"start: {start}, robot_x: {robot_x}, robot_y: {robot_y}")
+    #print(f"goals: {goal}, cm_per_pixel: {cm_per_pixel}")    
     
-    print (f"obstacles: {obstacles}")
+    #print (f"obstacles: {obstacles}")
 
     for distance_cm, angle_deg in obstacles:
         # Adjust the obstacle angle by adding the robot's angle
@@ -314,18 +314,18 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
         obstacle_x_mm = lastPos[0] + 5*distance_cm * np.cos(global_angle_rad)
         obstacle_y_mm = lastPos[1] + 5*distance_cm * np.sin(global_angle_rad)
         
-        print(f"{start[0]} + 10*{distance_cm} * np.cos({global_angle_rad})")
+        #print(f"{start[0]} + 10*{distance_cm} * np.cos({global_angle_rad})")
 
         # Calculate obstacle position in pixels
         obstacle_x_pixels = obstacle_x_mm/(10*cm_per_pixel)
         obstacle_y_pixels = obstacle_y_mm/(10*cm_per_pixel)
-        print(f"obstacle_x_pixels: {obstacle_x_mm} / {cm_per_pixel*10} = {obstacle_x_pixels}")
+        #print(f"obstacle_x_pixels: {obstacle_x_mm} / {cm_per_pixel*10} = {obstacle_x_pixels}")
 
         # Convert to grid coordinates
         obstacle_x_grid = int(obstacle_x_pixels // block_width)
         obstacle_y_grid = int(obstacle_y_pixels // block_height)
         
-        print(f"obstacle_x_grid: {obstacle_x_grid}, obstacle_y_grid: {obstacle_y_grid}")
+        #print(f"obstacle_x_grid: {obstacle_x_grid}, obstacle_y_grid: {obstacle_y_grid}")
 
         # Mark obstacle on the costmap if within bounds
         if 0 <= obstacle_x_grid < costmap.shape[1] and 0 <= obstacle_y_grid < costmap.shape[0]:
@@ -364,7 +364,7 @@ def update(costmap, block_height, block_width, start, goal, frame, cm_per_pixel,
     # Visualization using 'path' instead of 'path_cm'
     overlay_image = path_visualization(frame, path, block_width, block_height)
     # Return the path in cm
-    print(f"long path: {path}")
+    #print(f"long path: {path}")
     
 
     path_cm = path_pix_to_cm(path, block_width, block_height, cm_per_pixel)
